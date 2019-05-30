@@ -32,7 +32,7 @@ class QuestionParser:
     }
 
     def __init__(self):
-        self.nlp = spacy.load('en_core_web_md')
+        self.nlp = spacy.load('en')
         self.matcher = self.init_matcher()
 
     # parse een vraag met de juiste parser functie en translate de entity/property
@@ -59,6 +59,11 @@ class QuestionParser:
         matcher.add('X_OF_Y', None, [{'DEP': 'attr', 'LOWER': {'IN': ['who', 'what']}},
                                      {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}])
         matcher.add('WHO_DID_X', None, [{'DEP': 'nsubj', 'LOWER': 'who'}, {'DEP': 'ROOT'}])
+
+        matcher.add('WHAT_IS_THE_LAST', None, [{'LOWER': 'the', 'OP': '?'},
+          {'POS': 'NOUN'},
+          {'POS': 'NOUN', 'OP' : '?'}])
+
         return matcher
 
     # translator functie om de uiteindelijke entity en property teksten te filteren/rewriten
@@ -91,6 +96,9 @@ class QuestionParser:
             elif query[0] == 'when':
                 new_query = 'publication date'
 
+
+
+
         return new_query
 
     # in de onderstaande functies komen de parsers voor elke pattern.
@@ -109,6 +117,12 @@ class QuestionParser:
         ent = ''
         prop = ''
         return ent, prop, ''
+    
+    @staticmethod
+    def what_is_the_last(question):
+        ent = ''
+        prop = ''
+        return ent, prop, ''
 
 
 class QuestionSolver:
@@ -124,7 +138,18 @@ class QuestionSolver:
                            '    bd:serviceParam wikibase:language "en" .'
                            '  }}'
                            '}}',
-            'pattern_two': 'nog een query string hier'
+        #pattern two kan het laatste / eerste dat iemand van iets behaald heeft bepalen
+            'pattern_two': 'SELECT ?answerLabel WHERE {{
+                           ' wd:{0} p:{1}  ?answer .
+                           '?statement ps:{1} ?answer . 
+                           '?statement pq:P585 ?date 
+                           'SERVICE wikibase:label {{ 
+                           'bd:serviceParam wikibase:language "en" .
+                           '}}' 
+                           'ORDER BY DESC (?date)
+                           'LIMIT 1',
+            'pattern_three':
+
         }
 
     def __call__(self, question):
