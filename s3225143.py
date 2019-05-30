@@ -31,7 +31,7 @@ def get_answer(attributes, entities):
     for ent in entities:
         for atr in attributes:
             answer = do_query(ent, atr)
-            if answer == []:
+            if not answer:
                 continue
             else:
                 return answer
@@ -81,9 +81,9 @@ def get_attributes(doc, matcher, url):
     for match_id, start, end in matches:
         if doc[start].text == "'s" or doc[start].text == "the" or doc[start].text == "'":
             start += 1
-        if doc[end-1].text == "of":
+        if doc[end - 1].text == "of":
             end = end - 1
-        if doc[end-1].dep_ == "aux" or doc[end-1].dep_ == "ROOT":
+        if doc[end - 1].dep_ == "aux" or doc[end - 1].dep_ == "ROOT":
             i = start
             for item in doc[start:end]:
                 if item.pos_ == "NOUN" and (item.dep_ == "nsubj" or item.dep_ == "dobj"):
@@ -100,7 +100,8 @@ def get_attributes(doc, matcher, url):
         attribute = atts[0]
     except IndexError:
         return None
-    aParams = {'search': attribute, 'action': 'wbsearchentities', 'language': 'en', 'format': 'json', 'type': 'property'}
+    aParams = {'search': attribute, 'action': 'wbsearchentities', 'language': 'en', 'format': 'json',
+               'type': 'property'}
     attributes = requests.get(url, aParams).json()
     attributeList = [result['id'] for result in attributes['search']]
 
@@ -123,48 +124,48 @@ def create_and_fire_query(line, nlp, matcher):
 
 def make_matcher(nlp):
     matcher = Matcher(nlp.vocab)
-    pattern1 = [{"POS:":"PART", "DEP":"case"},
-                {"POS":"ADJ", "DEP":"amod", "OP":"*"},
-                {"POS":"NOUN", "DEP":"compound", "OP":"*"},
-                {"POS":"NOUN", "DEP":"attr"}]
+    pattern1 = [{"POS:": "PART", "DEP": "case"},
+                {"POS": "ADJ", "DEP": "amod", "OP": "*"},
+                {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+                {"POS": "NOUN", "DEP": "attr"}]
 
-    pattern2 = [{"POS:": "PART", "DEP":"case"},
-                {"POS":"ADJ", "DEP":"amod", "OP":"*"},
-                {"POS":"NOUN", "DEP":"compound", "OP":"*"},
-                {"POS":"NOUN", "DEP":"nsubj"}]
+    pattern2 = [{"POS:": "PART", "DEP": "case"},
+                {"POS": "ADJ", "DEP": "amod", "OP": "*"},
+                {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+                {"POS": "NOUN", "DEP": "nsubj"}]
 
-    pattern3 = [{"POS":"ADJ", "DEP":"amod", "OP":"*"},
-                {"POS":"NOUN", "DEP":"compound", "OP":"*"},
-                {"POS":"NOUN", "DEP":"attr"}, {"LOWER":"of"}]
+    pattern3 = [{"POS": "ADJ", "DEP": "amod", "OP": "*"},
+                {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+                {"POS": "NOUN", "DEP": "attr"}, {"LOWER": "of"}]
 
-    pattern4 = [{"POS":"ADJ", "DEP":"amod", "OP":"*"},
-                {"POS":"NOUN", "DEP":"compound", "OP":"*"},
-                {"POS":"NOUN", "DEP":"nsubj"},
-                {"LOWER":"of"}]
+    pattern4 = [{"POS": "ADJ", "DEP": "amod", "OP": "*"},
+                {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+                {"POS": "NOUN", "DEP": "nsubj"},
+                {"LOWER": "of"}]
 
     pattern5 = [{"DEP": "det"},
-                {"POS":"ADJ", "DEP":"amod", "OP":"*"},
-                {"POS":"NOUN", "DEP":"compound", "OP":"*"},
-                {"POS":"NOUN", "DEP":"dobj"},
-                {"POS":"VERB", "DEP":"aux"}]
+                {"POS": "ADJ", "DEP": "amod", "OP": "*"},
+                {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+                {"POS": "NOUN", "DEP": "dobj"},
+                {"POS": "VERB", "DEP": "aux"}]
 
     pattern6 = [{"DEP": "det"},
-                {"POS":"ADJ", "DEP":"amod", "OP":"*"},
-                {"POS":"NOUN", "DEP":"compound", "OP":"*"},
-                {"POS":"NOUN", "DEP":"nsubj"},
-                {"POS":"VERB", "DEP":"aux"}]
+                {"POS": "ADJ", "DEP": "amod", "OP": "*"},
+                {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+                {"POS": "NOUN", "DEP": "nsubj"},
+                {"POS": "VERB", "DEP": "aux"}]
 
     pattern7 = [{"DEP": "det"},
-                {"POS":"ADJ", "DEP":"amod", "OP":"*"},
-                {"POS":"NOUN", "DEP":"compound", "OP":"*"},
-                {"POS":"NOUN", "DEP":"dobj"},
-                {"POS":"VERB", "DEP":"ROOT"}]
+                {"POS": "ADJ", "DEP": "amod", "OP": "*"},
+                {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+                {"POS": "NOUN", "DEP": "dobj"},
+                {"POS": "VERB", "DEP": "ROOT"}]
 
     pattern8 = [{"DEP": "det"},
-                {"POS":"ADJ", "DEP":"amod", "OP":"*"},
-                {"POS":"NOUN", "DEP":"compound", "OP":"*"},
-                {"POS":"NOUN", "DEP":"nsubj"},
-                {"POS":"VERB", "DEP":"ROOT"}]
+                {"POS": "ADJ", "DEP": "amod", "OP": "*"},
+                {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+                {"POS": "NOUN", "DEP": "nsubj"},
+                {"POS": "VERB", "DEP": "ROOT"}]
 
     matcher.add('PATTERN1', None, pattern1)
     matcher.add('PATTERN2', None, pattern2)
@@ -177,7 +178,7 @@ def make_matcher(nlp):
     return matcher
 
 
-def main(argv):
+def main():
     print_example_queries()
     nlp = spacy.load('en')
     matcher = make_matcher(nlp)
@@ -195,4 +196,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()
