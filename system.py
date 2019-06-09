@@ -241,7 +241,13 @@ class QuestionSolver:
 
                 # resultaat / resultaten gevonden, return de resultaten
                 # dit gaat ervan uit dat de antwoorden als 'answerLabel' geselecteerd worden in de query
-                return map(lambda x: x['answerLabel']['value'], results)
+                answers = []
+                for result in results:
+                    for var in result:
+                        answers.append('{}'.format(result[var]['value']))
+                return answers
+                # return map(lambda x: x['answerLabel']['value'], results)
+
 
         raise NoAnswerError
 
@@ -255,16 +261,25 @@ def main():
     # answer questions from standard input
     with open('all_questions_and_answers.tsv', 'r', encoding='utf-8') as questions:
         for question in questions:
-            print("-----------------------\n", question)
+            print("-----------------------\n")
             q, url, *answers = question.split('\t')
+            print(q)
+            print("Actual answer(s):")
+            for a in answers:
+                print(a)
             # for token in nlp(q.strip()):
             #     print("\t".join((token.text, token.lemma_, token.pos_,token.tag_, token.dep_, token.head.lemma_)))
             answers_current = qa_system(q)
-            print(q)
-            if answers:
+            print("Our answer(s):")
+            if answers_current != None:
+                for answer in answers_current:
+                    print(answer)
+                print()
+            else:
+                print("No answer.\n")
+            """if answers:
                 got_it_right = True
                 for answer in answers:
-                    print(answer)
                     if(answers_current != None):
                         if answer not in answers_current:
                             got_it_right = False
@@ -273,7 +288,7 @@ def main():
 
             if not got_it_right:
                 with open('system_log.txt', 'w', encoding='utf-8') as logfile:
-                    logfile.write('{}\n'.format(q))
+                    logfile.write('{}\n'.format(q))"""
 
 
 if __name__ == '__main__':
