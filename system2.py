@@ -60,10 +60,10 @@ class QuestionParser:
     def init_matcher(self):
         # hier komen de patterns voor het identificeren van vraagtypes
         matcher = Matcher(self.nlp.vocab)
-        matcher.add('WHEN_WHERE', None, [{'LOWER': {'IN': ['when', 'where']}},
-                                         {'DEP': {'IN': ['ROOT', 'aux', 'auxpass']}}])
-        matcher.add('X_OF_Y', None, [{'DEP': 'attr', 'LOWER': {'IN': ['who', 'what']}},
+        matcher.add('X_OF_Y', None, [{'DEP': {'IN': ['attr','advmod']}, 'LOWER': {'IN': ['who', 'what','when']}},
                                      {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}])
+        #matcher.add('WHEN_WHERE', None, [{'LOWER': {'IN': ['when', 'where']}},
+        #                                 {'DEP': {'IN': ['ROOT', 'aux', 'auxpass']}}])
         matcher.add('WHO_DID_X', None, [{'DEP': 'nsubj', 'LOWER': 'who'}, {'DEP': 'ROOT'}])
         matcher.add('WHAT_DID_X', None, [{"DEP": "det"},
                                         {"POS": "ADJ", "DEP": "amod", "OP": "*"},
@@ -111,6 +111,7 @@ class QuestionParser:
     # hier is "2013" de Z value, omdat er een specifiek jaartal moet worden opgezocht
     @staticmethod
     def when_where(result):
+        print("when_where")
         entity = [w.text for w in next(w for w in result if w.dep_ in ['nsubj', 'nsubjpass']).subtree]
         prop_one = result[0].lemma_
         prop_two = result[-1].lemma_
@@ -119,6 +120,7 @@ class QuestionParser:
 
     @staticmethod
     def x_of_y(result):
+        print("x_of_y")
         prop_ent = next(w for w in result if w.dep_ == 'pobj')
         prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
         entity = [w.text for w in prop_ent.subtree]
@@ -126,12 +128,14 @@ class QuestionParser:
 
     @staticmethod
     def who_did_x(result):
+        print("who_did_x")
         prop = ['who', next(w for w in result if w.dep_ == 'ROOT').lemma_]
         entity = [w.text for w in result[end:]]
         return entity, prop, ''
 
     @staticmethod
     def what_did_x(result):
+        print("what_did_x")
         i = 0
         for item in result:
             if item.pos_ == "NOUN" and (item.dep_ == "nsubj" or item.dep_ == "dobj"):
@@ -220,6 +224,7 @@ class QuestionSolver:
         # query de wikidata api om wikidata entities te vinden voor property en entity
         wikidata_props = self.query_wikidata_api(prop, True)
         wikidata_entities = self.query_wikidata_api(entity)
+        print(wikidata_props,"\n",wikidata_entities)
         # niks gevonden voor de entity of de property
         if wikidata_props is None or wikidata_entities is None:
             raise NoAnswerError
@@ -269,8 +274,6 @@ def main():
             print("Actual answer(s):")
             for a in answers:
                 print(a)
-            # for token in nlp(q.strip()):
-            #     print("\t".join((token.text, token.lemma_, token.pos_,token.tag_, token.dep_, token.head.lemma_)))
             answers_current = qa_system(q)
             print("Our answer(s):")
             if answers_current != None:
@@ -280,6 +283,8 @@ def main():
             else:
                 print("No answer.\n")
         except ValueError:
+            for token in nlp(question.strip()):
+                print("\t".join((token.text, token.lemma_, token.pos_,token.tag_, token.dep_, token.head.lemma_)))
             answers_current = qa_system(question)
             if answers_current != None:
                 for answer in answers_current:
