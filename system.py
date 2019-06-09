@@ -48,7 +48,7 @@ class QuestionParser:
             raise NoAnswerError('Question is ill-formed, cannot answer this question')
         # wel een match gevonden, run de juiste parser functie
         if(found == True):
-            ent, prop, extra = getattr(self, result.vocab.strings[match_id].lower())(question)
+            ent, prop, extra = getattr(self, result.vocab.strings[match_id].lower())(result)
             found = False
         # translate de property en verwijder stopwords uit de entity
             return (result.vocab.strings[match_id], self.translate_query(prop),
@@ -102,9 +102,7 @@ class QuestionParser:
     # voorbeeld Z in een question template: 'Which award did AC/DC receive in 2013?'
     # hier is "2013" de Z value, omdat er een specifiek jaartal moet worden opgezocht
     @staticmethod
-    def when_where(question):
-        nlp = spacy.load('en')
-        result = nlp(question)
+    def when_where(result):
         entity = [w.text for w in next(w for w in result if w.dep_ in ['nsubj', 'nsubjpass']).subtree]
         prop_one = result[0].lemma_
         prop_two = result[-1].lemma_
@@ -112,18 +110,14 @@ class QuestionParser:
         return entity, prop, ''
 
     @staticmethod
-    def x_of_y(question):
-        nlp = spacy.load('en')
-        result = nlp(question)
+    def x_of_y(result):
         prop_ent = next(w for w in result if w.dep_ == 'pobj')
         prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
         entity = [w.text for w in prop_ent.subtree]
         return entity, prop, ''
 
     @staticmethod
-    def who_did_x(question):
-        nlp = spacy.load('en')
-        result = nlp(question)
+    def who_did_x(result):
         prop = ['who', next(w for w in result if w.dep_ == 'ROOT').lemma_]
         entity = [w.text for w in result[end:]]
         return entity, prop, ''
