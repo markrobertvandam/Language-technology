@@ -186,8 +186,6 @@ class QuestionSolver:
         # query de wikidata api om wikidata entities te vinden voor property en entity
         wikidata_props = self.query_wikidata_api(prop, True)
         wikidata_entities = self.query_wikidata_api(entity)
-        print(wikidata_props)
-        print(wikidata_entities)
         # niks gevonden voor de entity of de property
         if wikidata_props is None or wikidata_entities is None:
             raise NoAnswerError
@@ -195,16 +193,19 @@ class QuestionSolver:
         # we vinden meerdere entities en properties: probeer per entity de gevonden properties
         for wikidata_entity in wikidata_entities:
             for wikidata_prop in wikidata_props:
-
+                print(question_type.lower())
                 # de juiste query moet nog gekozen worden op basis van question type
-                query_string = self.query_dict['who_where']
+                query_string = self.query_dict[question_type.lower()]
+
 
                 # vul de query string met de gevonden entity/property/extra in de vraag
-                query_string.format(wikidata_entity, wikidata_prop, extra)
-
+                query_string = query_string.format(wikidata_entity, wikidata_prop, extra)
+                print(query_string)
                 self.sparql.setQuery(query_string)
                 self.sparql.setReturnFormat(JSON)
                 results = self.sparql.query().convert()['results']['bindings']
+
+                print(results)
 
                 # geen resultaten voor deze combinatie, probeer de volgende
                 if not results:
@@ -227,8 +228,8 @@ def main():
     with open('all_questions_and_answers.tsv', 'r', encoding='utf-8') as questions:
         for question in questions:
             q, url, *answers = question.split('\t')
-            for token in nlp(q.strip()):
-                print("\t".join((token.text, token.lemma_, token.pos_,token.tag_, token.dep_, token.head.lemma_)))
+            # for token in nlp(q.strip()):
+            #     print("\t".join((token.text, token.lemma_, token.pos_,token.tag_, token.dep_, token.head.lemma_)))
             answers_current = qa_system(q)
             print(answers_current)
             if answers:
