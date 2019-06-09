@@ -7,6 +7,7 @@ from spacy.matcher import Matcher
 from datetime import datetime
 from requests import get
 from SPARQLWrapper import SPARQLWrapper, JSON
+import en_core_web_sm
 
 # handle input
 from sys import stdin
@@ -34,21 +35,23 @@ class QuestionParser:
     def __init__(self):
         self.nlp = spacy.load('en')
         self.matcher = self.init_matcher()
-
     # parse een vraag met de juiste parser functie en translate de entity/property
     def __call__(self, question):
+        found = False
         result = self.nlp(question)
         try:
-            match_id, start, end = self.matcher(result)
+            for results in self.matcher(result):
+                match_id, start, end = results[0], results[1], results[2]
+                found = True
         except IndexError:
             # question voldoet niet aan een van onze patterns, error dus
             raise NoAnswerError('Question is ill-formed, cannot answer this question')
-
         # wel een match gevonden, run de juiste parser functie
-        ent, prop, extra = getattr(self, result.vocab.strings[match_id].lower())(question)
-
+        if(found == True):
+            ent, prop, extra = getattr(self, result.vocab.strings[match_id].lower())(question)
+            found = False
         # translate de property en verwijder stopwords uit de entity
-        return (result.vocab.strings[match_id], self.translate_query(prop),
+            return (result.vocab.strings[match_id], self.translate_query(prop),
                 ' '.join(w for w in ent if w not in self.stop_words), extra)
 
     def init_matcher(self):
@@ -100,24 +103,30 @@ class QuestionParser:
     # hier is "2013" de Z value, omdat er een specifiek jaartal moet worden opgezocht
     @staticmethod
     def when_where(question):
-        entity = [w.text for w in next(w for w in question if w.dep_ in ['nsubj', 'nsubjpass']).subtree]
+        nlp = spacy.load('en')
+        result = nlp(question)
+        entity = [w.text for w in next(w for w in result if w.dep_ in ['nsubj', 'nsubjpass']).subtree]
         prop_one = result[0].lemma_
         prop_two = result[-1].lemma_
         prop = [prop_one, prop_two]
-        return ent, prop, ''
+        return entity, prop, ''
 
     @staticmethod
     def x_of_y(question):
+        nlp = spacy.load('en')
+        result = nlp(question)
         prop_ent = next(w for w in result if w.dep_ == 'pobj')
         prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
         entity = [w.text for w in prop_ent.subtree]
-        return ent, prop, ''
+        return entity, prop, ''
 
     @staticmethod
     def who_did_x(question):
+        nlp = spacy.load('en')
+        result = nlp(question)
         prop = ['who', next(w for w in result if w.dep_ == 'ROOT').lemma_]
         entity = [w.text for w in result[end:]]
-        return ent, prop, ''
+        return entity, prop, ''
 
 
 class QuestionSolver:
@@ -127,7 +136,7 @@ class QuestionSolver:
         self.parser = QuestionParser()
 
         self.query_dict = {
-            'pattern_one': 'SELECT ?answerLabel WHERE {{ '
+            'when_where': 'SELECT ?answerLabel WHERE {{ '
                            '  wd:{} wdt:{} ?answer . '
                            '  SERVICE wikibase:label {{ '
                            '    bd:serviceParam wikibase:language "en" .'
@@ -143,8 +152,8 @@ class QuestionSolver:
             answers = self.query_answer(q_type, prop, ent)
 
         # geen antwoord gevonden
-        except NoAnswerError as err:
-            print(err)
+        except:
+            #print(err)
             return
 
         for answer in answers:
@@ -183,7 +192,8 @@ class QuestionSolver:
         # query de wikidata api om wikidata entities te vinden voor property en entity
         wikidata_props = self.query_wikidata_api(prop, True)
         wikidata_entities = self.query_wikidata_api(entity)
-
+        print(wikidata_props)
+        print(wikidata_entities)
         # niks gevonden voor de entity of de property
         if wikidata_props is None or wikidata_entities is None:
             raise NoAnswerError
@@ -193,7 +203,7 @@ class QuestionSolver:
             for wikidata_prop in wikidata_props:
 
                 # de juiste query moet nog gekozen worden op basis van question type
-                query_string = self.query_dict[question_type]
+                query_string = self.query_dict['who_where']
 
                 # vul de query string met de gevonden entity/property/extra in de vraag
                 query_string.format(wikidata_entity, wikidata_prop, extra)
@@ -223,12 +233,15 @@ def main():
         for question in questions:
             q, url, *answers = question.split('\t')
             answers_current = qa_system(q)
-
+            print('hoi')
+            print(answers_current)
+            print('hoi')
             if answers:
                 got_it_right = True
                 for answer in answers:
-                    if answer not in answers_current:
-                        got_it_right = False
+                    if(answers_current != None):
+                        if answer not in answers_current:
+                            got_it_right = False
             else:
                 got_it_right = False
 
