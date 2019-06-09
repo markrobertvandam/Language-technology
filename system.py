@@ -224,6 +224,7 @@ class QuestionSolver:
 
 
 def main():
+    nlp = spacy.load('en')
     print('Loading up QA System...')
     qa_system = QuestionSolver()
     print('Ready to go!\n')
@@ -232,10 +233,10 @@ def main():
     with open('all_questions_and_answers.tsv', 'r', encoding='utf-8') as questions:
         for question in questions:
             q, url, *answers = question.split('\t')
+            for token in nlp(q.strip()):
+                print("\t".join((token.text, token.lemma_, token.pos_,token.tag_, token.dep_, token.head.lemma_)))
             answers_current = qa_system(q)
-            print('hoi')
             print(answers_current)
-            print('hoi')
             if answers:
                 got_it_right = True
                 for answer in answers:
