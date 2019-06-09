@@ -136,7 +136,14 @@ class QuestionSolver:
                            '    bd:serviceParam wikibase:language "en" .'
                            '  }}'
                            '}}',
-            'pattern_two': 'nog een query string hier'
+            'x_of_y':      'SELECT ?answerLabel WHERE {{ '
+                           '  wd:{} wdt:{} ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" .'
+                           '  }}'
+                           '}}',
+            'pattern_three':
+                            'nog een query maken'
         }
 
     def __call__(self, question):
@@ -193,14 +200,12 @@ class QuestionSolver:
         # we vinden meerdere entities en properties: probeer per entity de gevonden properties
         for wikidata_entity in wikidata_entities:
             for wikidata_prop in wikidata_props:
-                print(question_type.lower())
                 # de juiste query moet nog gekozen worden op basis van question type
                 query_string = self.query_dict[question_type.lower()]
 
 
                 # vul de query string met de gevonden entity/property/extra in de vraag
                 query_string = query_string.format(wikidata_entity, wikidata_prop, extra)
-                print(query_string)
                 self.sparql.setQuery(query_string)
                 self.sparql.setReturnFormat(JSON)
                 results = self.sparql.query().convert()['results']['bindings']
@@ -227,10 +232,12 @@ def main():
     # answer questions from standard input
     with open('all_questions_and_answers.tsv', 'r', encoding='utf-8') as questions:
         for question in questions:
+            print(question)
             q, url, *answers = question.split('\t')
             # for token in nlp(q.strip()):
             #     print("\t".join((token.text, token.lemma_, token.pos_,token.tag_, token.dep_, token.head.lemma_)))
             answers_current = qa_system(q)
+            print(q)
             print(answers_current)
             if answers:
                 got_it_right = True
