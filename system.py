@@ -59,11 +59,6 @@ class QuestionParser:
         matcher.add('X_OF_Y', None, [{'DEP': 'attr', 'LOWER': {'IN': ['who', 'what']}},
                                      {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}])
         matcher.add('WHO_DID_X', None, [{'DEP': 'nsubj', 'LOWER': 'who'}, {'DEP': 'ROOT'}])
-
-        matcher.add('WHAT_IS_THE_LAST', None, [{'LOWER': 'the', 'OP': '?'},
-          {'POS': 'NOUN'},
-          {'POS': 'NOUN', 'OP' : '?'}])
-
         return matcher
 
     # translator functie om de uiteindelijke entity en property teksten te filteren/rewriten
@@ -96,9 +91,6 @@ class QuestionParser:
             elif query[0] == 'when':
                 new_query = 'publication date'
 
-
-
-
         return new_query
 
     # in de onderstaande functies komen de parsers voor elke pattern.
@@ -107,19 +99,15 @@ class QuestionParser:
     # voorbeeld Z in een question template: 'Which award did AC/DC receive in 2013?'
     # hier is "2013" de Z value, omdat er een specifiek jaartal moet worden opgezocht
     @staticmethod
-    def pattern_one(question):
-        ent = ''
-        prop = ''
+    def when_where(question):
+        entity = [w.text for w in next(w for w in question if w.dep_ in ['nsubj', 'nsubjpass']).subtree]
+        prop_one = result[0].lemma_
+        prop_two = result[-1].lemma_
+        prop = [prop_one, prop_two]
         return ent, prop, ''
 
     @staticmethod
     def pattern_two(question):
-        ent = ''
-        prop = ''
-        return ent, prop, ''
-    
-    @staticmethod
-    def what_is_the_last(question):
         ent = ''
         prop = ''
         return ent, prop, ''
@@ -138,18 +126,7 @@ class QuestionSolver:
                            '    bd:serviceParam wikibase:language "en" .'
                            '  }}'
                            '}}',
-        #pattern two kan het laatste / eerste dat iemand van iets behaald heeft bepalen
-            'pattern_two': 'SELECT ?answerLabel WHERE {{
-                           ' wd:{0} p:{1}  ?answer .
-                           '?statement ps:{1} ?answer . 
-                           '?statement pq:P585 ?date 
-                           'SERVICE wikibase:label {{ 
-                           'bd:serviceParam wikibase:language "en" .
-                           '}}' 
-                           'ORDER BY DESC (?date)
-                           'LIMIT 1',
-            'pattern_three':
-
+            'pattern_two': 'nog een query string hier'
         }
 
     def __call__(self, question):
