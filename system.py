@@ -107,9 +107,16 @@ class QuestionParser:
         return ent, prop, ''
 
     @staticmethod
-    def pattern_two(question):
-        ent = ''
-        prop = ''
+    def x_of_y(question):
+        prop_ent = next(w for w in result if w.dep_ == 'pobj')
+        prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
+        entity = [w.text for w in prop_ent.subtree]
+        return ent, prop, ''
+
+    @staticmethod
+    def who_did_x(question):
+        prop = ['who', next(w for w in result if w.dep_ == 'ROOT').lemma_]
+        entity = [w.text for w in result[end:]]
         return ent, prop, ''
 
 
