@@ -279,6 +279,8 @@ def main():
             if answers_current != None:
                 for answer in answers_current:
                     print(answer)
+                    if answer.strip() in answers:
+                        print("yay")
                 print()
             else:
                 print("No answer.\n")
