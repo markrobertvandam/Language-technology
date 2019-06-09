@@ -30,6 +30,7 @@ class QuestionParser:
         'invent': 'inventor',
         'bear': 'birth',
         'die': 'death',
+        'real name': 'full name',
     }
 
     def __init__(self):
@@ -62,6 +63,11 @@ class QuestionParser:
         matcher.add('X_OF_Y', None, [{'DEP': 'attr', 'LOWER': {'IN': ['who', 'what']}},
                                      {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}])
         matcher.add('WHO_DID_X', None, [{'DEP': 'nsubj', 'LOWER': 'who'}, {'DEP': 'ROOT'}])
+        matcher.add('WHAT_DID_X', None, [{"DEP": "det"},
+                                        {"POS": "ADJ", "DEP": "amod", "OP": "*"},
+                                        {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+                                        {"POS": "NOUN", "DEP": {'IN': ['dobj', 'nsub']}},
+                                        {"POS": "VERB", "DEP": {'IN': ['aux', 'ROOT']}}])
         return matcher
 
     # translator functie om de uiteindelijke entity en property teksten te filteren/rewriten
@@ -122,6 +128,19 @@ class QuestionParser:
         entity = [w.text for w in result[end:]]
         return entity, prop, ''
 
+    @staticmethod
+    def what_did_x(result):
+        i = 0
+        for item in result:
+            if item.pos_ == "NOUN" and (item.dep_ == "nsubj" or item.dep_ == "dobj"):
+                prop = result[i].text
+                break
+            else:
+                i += 1
+        entity = [e.text for e in result.ents]
+        entity = entity[0]
+        return entity.split(), prop.split(), ''
+
 
 class QuestionSolver:
     def __init__(self):
@@ -142,8 +161,13 @@ class QuestionSolver:
                            '    bd:serviceParam wikibase:language "en" .'
                            '  }}'
                            '}}',
-            'pattern_three':
-                            'nog een query maken'
+            'what_did_x':   'SELECT ?answerLabel WHERE {{ '
+                           '  wd:{} wdt:{} ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" .'
+                           '  }}'
+                           '}}',
+            '4':           'nog iets'
         }
 
     def __call__(self, question):
@@ -160,9 +184,10 @@ class QuestionSolver:
         for answer in answers:
             try:
                 date = datetime.strptime(answer, '%Y-%m-%dT%H:%M:%SZ')
-                print(date.strftime('%m/%d/%Y'))
+                #print(date.strftime('%m/%d/%Y'))
             except ValueError:
-                print(answer)
+                #print(answer)
+                pass
 
         return answers
 
@@ -210,8 +235,6 @@ class QuestionSolver:
                 self.sparql.setReturnFormat(JSON)
                 results = self.sparql.query().convert()['results']['bindings']
 
-                print(results)
-
                 # geen resultaten voor deze combinatie, probeer de volgende
                 if not results:
                     continue
@@ -232,16 +255,16 @@ def main():
     # answer questions from standard input
     with open('all_questions_and_answers.tsv', 'r', encoding='utf-8') as questions:
         for question in questions:
-            print(question)
+            print("-----------------------\n", question)
             q, url, *answers = question.split('\t')
             # for token in nlp(q.strip()):
             #     print("\t".join((token.text, token.lemma_, token.pos_,token.tag_, token.dep_, token.head.lemma_)))
             answers_current = qa_system(q)
             print(q)
-            print(answers_current)
             if answers:
                 got_it_right = True
                 for answer in answers:
+                    print(answer)
                     if(answers_current != None):
                         if answer not in answers_current:
                             got_it_right = False
