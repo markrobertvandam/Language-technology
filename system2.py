@@ -39,6 +39,7 @@ class QuestionParser:
 
     # parse een vraag met de juiste parser functie en translate de entity/property
     def __call__(self, question):
+        print(question)
         result = self.nlp(question)
         try:
             match_id, start, end = self.matcher(result)[0]
@@ -49,6 +50,7 @@ class QuestionParser:
         # wel een match gevonden, run de juiste parser functie
         ent, prop, extra = getattr(self, result.vocab.strings[match_id].lower())(result)
         # translate de property en verwijder stopwords uit de entity
+        print(prop, ent)
         return (result.vocab.strings[match_id], self.translate_query(prop),
                 ' '.join(w for w in ent if w not in self.stop_words), extra)
 
@@ -56,38 +58,34 @@ class QuestionParser:
         # hier komen de patterns voor het identificeren van vraagtypes
         matcher = Matcher(self.nlp.vocab)
         matcher.add('X_OF_Y', None, [
-            {'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
-            {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}
+            {'DEP': {'IN': ['attr', 'advmod', 'nsubj']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
+            {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},
+            {'DEP': 'det', 'OP': '?'},
+            {'DEP': {'IN': ['amod', 'compound', 'attr']}, 'OP': '*'},
+            {'LOWER': 'of'},
         ])
-        matcher.add('POSS', None, [
+        matcher.add('POSSESSIVE', None, [
             {'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
             {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},
-            {'DEP': "det", "OP": "?"},
-            {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "*"},
-            {'LOWER': {'IN': ['his', 'her', 'their']}}
-        ])
-        matcher.add('SHORT_POSS', None, [
-            {'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
-            {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},
-            {'DEP': "det", "OP": "?"},
-            {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "*"},
-            {'LOWER': {'IN': ["'s"]}}
+            {'DEP': 'det', 'OP': '?'},
+            {'POS': {'IN': ['NOUN', 'PROPN']}, 'OP': '*'},
+            {'LOWER': {'IN': ['\'s']}},
         ])
         # matcher.add('WHEN_WHERE', None, [
         #     {'LOWER': {'IN': ['when', 'where']}},
         #     {'DEP': {'IN': ['ROOT', 'aux', 'auxpass']}}
         # ])
-        matcher.add('WHO_DID_X', None, [
-            {'DEP': 'nsubj', 'LOWER': 'who'},
-            {'DEP': 'ROOT'}
-        ])
-        matcher.add('WHAT_DID_X', None, [
-            {"DEP": "det"},
-            {"POS": "ADJ", "DEP": "amod", "OP": "*"},
-            {"POS": "NOUN", "DEP": "compound", "OP": "*"},
-            {"POS": "NOUN", "DEP": {'IN': ['dobj', 'nsub']}},
-            {"POS": "VERB", "DEP": {'IN': ['aux', 'ROOT']}}
-        ])
+        # matcher.add('WHO_DID_X', None, [
+        #     {'DEP': 'nsubj', 'LOWER': 'who'},
+        #     {'DEP': 'ROOT'},
+        # ])
+        # matcher.add('WHAT_DID_X', None, [
+        #     {'DEP': 'det'},
+        #     {'POS': 'ADJ', 'DEP': 'amod', 'OP': '*'},
+        #     {'POS': 'NOUN', 'DEP': 'compound', 'OP': '*'},
+        #     {'POS': 'NOUN', 'DEP': {'IN': ['dobj', 'nsub']}},
+        #     {'POS': 'VERB', 'DEP': {'IN': ['aux', 'ROOT']}},
+        # ])
         return matcher
 
     # translator functie om de uiteindelijke entity en property teksten te filteren/rewriten
@@ -128,6 +126,23 @@ class QuestionParser:
     # voorbeeld Z in een question template: 'Which award did AC/DC receive in 2013?'
     # hier is "2013" de Z value, omdat er een specifiek jaartal moet worden opgezocht
     @staticmethod
+    def x_of_y(result):
+        print(result)
+        prop_ent = next(w for w in result if w.dep_ == 'pobj')
+        prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
+        entity = [w.text for w in prop_ent.subtree]
+        return entity, prop, ''
+
+    @staticmethod
+    def possessive(result):
+        # print("short_poss")
+        poss = next(w for w in result if w.dep_ == 'poss')
+        entity = [w.text for w in result if w.pos_ == 'PROPN']
+        prop = [w.text for w in result[-1:]]
+        # entity = [w.text for w in prop_ent.subtree]
+        return entity, prop, ''
+
+    @staticmethod
     def when_where(result):
         # print("when_where")
         entity = [w.text for w in next(w for w in result if w.dep_ in ['nsubj', 'nsubjpass']).subtree]
@@ -137,28 +152,10 @@ class QuestionParser:
         return entity, prop, ''
 
     @staticmethod
-    def x_of_y(result):
-        print(result)
-        prop_ent = next(w for w in result if w.dep_ == 'pobj')
-        prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
-        entity = [w.text for w in prop_ent.subtree]
-        print(prop, entity)
-        return entity, prop, ''
-
-    @staticmethod
-    def short_poss(result):
-        # print("short_poss")
-        poss = next(w for w in result if w.dep_ == 'poss')
-        entity = [w.text for w in result if w.pos_ == 'PROPN']
-        prop = [w.text for w in result[-1:]]
-        # entity = [w.text for w in prop_ent.subtree]
-        return entity, prop, ''
-
-    @staticmethod
     def who_did_x(result):
         # print("who_did_x")
         prop = ['who', next(w for w in result if w.dep_ == 'ROOT').lemma_]
-        entity = [w.text for w in result[end:]]
+        entity = []
         return entity, prop, ''
 
     @staticmethod
@@ -221,7 +218,7 @@ class QuestionSolver:
 
     def print_question(self, question):
         for token in self.parser.nlp(question.strip()):
-            print("\t".join((token.text, token.lemma_, token.pos_, token.tag_, token.dep_, token.head.lemma_)))
+            print('\t'.join((token.text, token.lemma_, token.pos_, token.tag_, token.dep_, token.head.lemma_)))
 
     @staticmethod
     def print_answers(answers):
@@ -259,13 +256,12 @@ class QuestionSolver:
         # query de wikidata api om wikidata entities te vinden voor property en entity
         wikidata_props = self.query_wikidata_api(prop, True)
         wikidata_entities = self.query_wikidata_api(entity)
-        # print(wikidata_props,"\n",wikidata_entities)
         # niks gevonden voor de entity of de property
         if wikidata_props is None:
-            raise NoAnswerError('Could not find what you asked about')
+            raise NoAnswerError('Could not find the property you asked for')
 
         if wikidata_entities is None:
-            raise NoAnswerError('Could not find whom you asked about')
+            raise NoAnswerError('Could not find the entity you asked about')
 
         # we vinden meerdere entities en properties: probeer per entity de gevonden properties
         for wikidata_entity in wikidata_entities:
@@ -301,17 +297,17 @@ def main():
             for question in questions_file:
                 num_questions += 1
 
-                # print("-----------------------\n")
+                # print('-----------------------\n')
                 q, url, *answers = question.strip().split('\t')
                 # print(q)
-                # print("Actual answer(s):")
+                # print('Actual answer(s):')
                 # for a in answers:
                 # print(a)
                 try:
                     answers_current = qa_system(q)
                 except NoAnswerError:
                     continue
-                # print("Our answer(s):")
+                # print('Our answer(s):')
                 right_answer = 0
                 for answer in answers_current:
                     # print(answer)
@@ -319,7 +315,7 @@ def main():
                         right_answer += 1
                 if right_answer / len(answers_current) >= 0.5:
                     correct_answers += 1
-        print("Accuracy: ", correct_answers / num_questions)
+        print('Accuracy: ', correct_answers / num_questions)
     else:
         for question in sys.stdin:
             qa_system.print_question(question)
