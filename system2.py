@@ -3,6 +3,7 @@
 
 import spacy
 import fileinput
+import sys
 
 from spacy.matcher import Matcher
 
@@ -111,7 +112,7 @@ class QuestionParser:
     # hier is "2013" de Z value, omdat er een specifiek jaartal moet worden opgezocht
     @staticmethod
     def when_where(result):
-        print("when_where")
+        #print("when_where")
         entity = [w.text for w in next(w for w in result if w.dep_ in ['nsubj', 'nsubjpass']).subtree]
         prop_one = result[0].lemma_
         prop_two = result[-1].lemma_
@@ -120,7 +121,7 @@ class QuestionParser:
 
     @staticmethod
     def x_of_y(result):
-        print("x_of_y")
+        #print("x_of_y")
         prop_ent = next(w for w in result if w.dep_ == 'pobj')
         prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
         entity = [w.text for w in prop_ent.subtree]
@@ -128,14 +129,14 @@ class QuestionParser:
 
     @staticmethod
     def who_did_x(result):
-        print("who_did_x")
+        #print("who_did_x")
         prop = ['who', next(w for w in result if w.dep_ == 'ROOT').lemma_]
         entity = [w.text for w in result[end:]]
         return entity, prop, ''
 
     @staticmethod
     def what_did_x(result):
-        print("what_did_x")
+        #print("what_did_x")
         i = 0
         for item in result:
             if item.pos_ == "NOUN" and (item.dep_ == "nsubj" or item.dep_ == "dobj"):
@@ -224,7 +225,7 @@ class QuestionSolver:
         # query de wikidata api om wikidata entities te vinden voor property en entity
         wikidata_props = self.query_wikidata_api(prop, True)
         wikidata_entities = self.query_wikidata_api(entity)
-        print(wikidata_props,"\n",wikidata_entities)
+        #print(wikidata_props,"\n",wikidata_entities)
         # niks gevonden voor de entity of de property
         if wikidata_props is None or wikidata_entities is None:
             raise NoAnswerError
@@ -264,27 +265,38 @@ def main():
     print('Loading up QA System...')
     qa_system = QuestionSolver()
     print('Ready to go!\n')
-
+    correct_answers = 0
+    wrong_answers = 0
     # answer questions from standard input
-    for question in fileinput.input():
-        try:
-            print("-----------------------\n")
-            q, url, *answers = question.split('\t')
-            print(q)
-            print("Actual answer(s):")
-            for a in answers:
-                print(a)
+    if len(sys.argv)>1:
+        for question in fileinput.input():
+            right_answer = 0
+            wrong_answer = 0
+            #print("-----------------------\n")
+            q, url, *answers = question.strip().split('\t')
+            #print(q)
+            #print("Actual answer(s):")
+            #for a in answers:
+                #print(a)
             answers_current = qa_system(q)
-            print("Our answer(s):")
+            #print("Our answer(s):")
             if answers_current != None:
                 for answer in answers_current:
-                    print(answer)
+                    #print(answer)
                     if answer.strip() in answers:
-                        print("yay")
-                print()
+                        right_answer+=1
+                    else:
+                        wrong_answer+=1
+                if right_answer > 0 and (wrong_answer == 0 or right_answer/wrong_answer >= 0.5):
+                    correct_answers+=1
+                else:
+                    wrong_answers+=1
+                #print()
             else:
-                print("No answer.\n")
-        except ValueError:
+                #print("No answer.\n")
+                wrong_answers+=1
+    else:
+        for question in fileinput.input():
             for token in nlp(question.strip()):
                 print("\t".join((token.text, token.lemma_, token.pos_,token.tag_, token.dep_, token.head.lemma_)))
             answers_current = qa_system(question)
@@ -294,7 +306,7 @@ def main():
                 print()
             else:
                 print("No answer.\n")         
-
+    print("Accuracy: ", correct_answers/(correct_answers+wrong_answers))
 
 if __name__ == '__main__':
     main()
