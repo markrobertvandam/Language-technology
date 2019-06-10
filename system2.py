@@ -62,7 +62,11 @@ class QuestionParser:
         # hier komen de patterns voor het identificeren van vraagtypes
         matcher = Matcher(self.nlp.vocab)
         matcher.add('X_OF_Y', None, [{'DEP': {'IN': ['attr','advmod']}, 'LOWER': {'IN': ['who', 'what','when']}},
-                                     {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}])
+                                     {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}, {'DEP': "det", "OP": "?"}, {"POS": {"IN": ["NOUN","PROPN"]}, "OP": "*"}, {'LOWER': "of"}])
+        matcher.add('poss', None, [{'DEP': {'IN': ['attr','advmod']}, 'LOWER': {'IN': ['who', 'what','when']}},
+                                     {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},{'DEP': "det", "OP": "?"}, {"POS": {"IN": ["NOUN","PROPN"]}, "OP": "*"},{'LOWER': {'IN': ['his','her','their']}}])
+        matcher.add('short_poss', None, [{'DEP': {'IN': ['attr','advmod']}, 'LOWER': {'IN': ['who', 'what','when']}},
+                                     {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},{'DEP': "det", "OP": "?"}, {"POS": {"IN": ["NOUN","PROPN"]}, "OP": "*"},{'LOWER': {'IN': ["'s"]}}])
         #matcher.add('WHEN_WHERE', None, [{'LOWER': {'IN': ['when', 'where']}},
         #                                 {'DEP': {'IN': ['ROOT', 'aux', 'auxpass']}}])
         matcher.add('WHO_DID_X', None, [{'DEP': 'nsubj', 'LOWER': 'who'}, {'DEP': 'ROOT'}])
@@ -121,10 +125,20 @@ class QuestionParser:
 
     @staticmethod
     def x_of_y(result):
-        #print("x_of_y")
+        print("x_of_y")
         prop_ent = next(w for w in result if w.dep_ == 'pobj')
         prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
         entity = [w.text for w in prop_ent.subtree]
+        print(prop,entity)
+        return entity, prop, ''
+
+    @staticmethod
+    def short_poss(result):
+        print("short_poss")
+        poss = next(w for w in result if w.dep_ == 'poss')
+        entity = [w.text for w in result if w.pos_ == 'PROPN']
+        prop = [w.text for w in result[-1:]]
+        #entity = [w.text for w in prop_ent.subtree]
         return entity, prop, ''
 
     @staticmethod
@@ -174,7 +188,12 @@ class QuestionSolver:
                            '    bd:serviceParam wikibase:language "en" .'
                            '  }}'
                            '}}',
-            '4':           'nog iets'
+            'short_poss':  'SELECT ?answerLabel WHERE {{ '
+                           '  wd:{} wdt:{} ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" .'
+                           '  }}'
+                           '}}'
         }
 
     def __call__(self, question):
