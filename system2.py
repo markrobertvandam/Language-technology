@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import spacy
-import fileinput
 import sys
 
 from spacy.matcher import Matcher
@@ -10,10 +9,8 @@ from spacy.matcher import Matcher
 from datetime import datetime
 from requests import get
 from SPARQLWrapper import SPARQLWrapper, JSON
-import en_core_web_sm
 
 # handle input
-from sys import stdin
 from unidecode import unidecode
 
 
@@ -39,42 +36,43 @@ class QuestionParser:
     def __init__(self):
         self.nlp = spacy.load('en')
         self.matcher = self.init_matcher()
+
     # parse een vraag met de juiste parser functie en translate de entity/property
     def __call__(self, question):
-        found = False
         result = self.nlp(question)
         try:
-            for results in self.matcher(result):
-                match_id, start, end = results[0], results[1], results[2]
-                found = True
+            match_id, start, end = self.matcher(result)[0]
         except IndexError:
             # question voldoet niet aan een van onze patterns, error dus
             raise NoAnswerError('Question is ill-formed, cannot answer this question')
+
         # wel een match gevonden, run de juiste parser functie
-        if(found == True):
-            ent, prop, extra = getattr(self, result.vocab.strings[match_id].lower())(result)
-            found = False
+        ent, prop, extra = getattr(self, result.vocab.strings[match_id].lower())(result)
         # translate de property en verwijder stopwords uit de entity
-            return (result.vocab.strings[match_id], self.translate_query(prop),
+        return (result.vocab.strings[match_id], self.translate_query(prop),
                 ' '.join(w for w in ent if w not in self.stop_words), extra)
 
     def init_matcher(self):
         # hier komen de patterns voor het identificeren van vraagtypes
         matcher = Matcher(self.nlp.vocab)
-        matcher.add('X_OF_Y', None, [{'DEP': {'IN': ['attr','advmod']}, 'LOWER': {'IN': ['who', 'what','when']}},
-                                     {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}, {'DEP': "det", "OP": "?"}, {"POS": {"IN": ["NOUN","PROPN"]}, "OP": "*"}, {'LOWER': "of"}])
-        matcher.add('poss', None, [{'DEP': {'IN': ['attr','advmod']}, 'LOWER': {'IN': ['who', 'what','when']}},
-                                     {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},{'DEP': "det", "OP": "?"}, {"POS": {"IN": ["NOUN","PROPN"]}, "OP": "*"},{'LOWER': {'IN': ['his','her','their']}}])
-        matcher.add('short_poss', None, [{'DEP': {'IN': ['attr','advmod']}, 'LOWER': {'IN': ['who', 'what','when']}},
-                                     {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},{'DEP': "det", "OP": "?"}, {"POS": {"IN": ["NOUN","PROPN"]}, "OP": "*"},{'LOWER': {'IN': ["'s"]}}])
-        #matcher.add('WHEN_WHERE', None, [{'LOWER': {'IN': ['when', 'where']}},
+        matcher.add('X_OF_Y', None, [{'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
+                                     {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}, {'DEP': "det", "OP": "?"},
+                                     {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "*"}, {'LOWER': "of"}])
+        matcher.add('POSS', None, [{'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
+                                   {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}, {'DEP': "det", "OP": "?"},
+                                   {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "*"},
+                                   {'LOWER': {'IN': ['his', 'her', 'their']}}])
+        matcher.add('SHORT_POSS', None, [{'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
+                                         {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}, {'DEP': "det", "OP": "?"},
+                                         {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "*"}, {'LOWER': {'IN': ["'s"]}}])
+        # matcher.add('WHEN_WHERE', None, [{'LOWER': {'IN': ['when', 'where']}},
         #                                 {'DEP': {'IN': ['ROOT', 'aux', 'auxpass']}}])
         matcher.add('WHO_DID_X', None, [{'DEP': 'nsubj', 'LOWER': 'who'}, {'DEP': 'ROOT'}])
         matcher.add('WHAT_DID_X', None, [{"DEP": "det"},
-                                        {"POS": "ADJ", "DEP": "amod", "OP": "*"},
-                                        {"POS": "NOUN", "DEP": "compound", "OP": "*"},
-                                        {"POS": "NOUN", "DEP": {'IN': ['dobj', 'nsub']}},
-                                        {"POS": "VERB", "DEP": {'IN': ['aux', 'ROOT']}}])
+                                         {"POS": "ADJ", "DEP": "amod", "OP": "*"},
+                                         {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+                                         {"POS": "NOUN", "DEP": {'IN': ['dobj', 'nsub']}},
+                                         {"POS": "VERB", "DEP": {'IN': ['aux', 'ROOT']}}])
         return matcher
 
     # translator functie om de uiteindelijke entity en property teksten te filteren/rewriten
@@ -116,7 +114,7 @@ class QuestionParser:
     # hier is "2013" de Z value, omdat er een specifiek jaartal moet worden opgezocht
     @staticmethod
     def when_where(result):
-        #print("when_where")
+        # print("when_where")
         entity = [w.text for w in next(w for w in result if w.dep_ in ['nsubj', 'nsubjpass']).subtree]
         prop_one = result[0].lemma_
         prop_two = result[-1].lemma_
@@ -129,7 +127,7 @@ class QuestionParser:
         prop_ent = next(w for w in result if w.dep_ == 'pobj')
         prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
         entity = [w.text for w in prop_ent.subtree]
-        print(prop,entity)
+        print(prop, entity)
         return entity, prop, ''
 
     @staticmethod
@@ -138,19 +136,19 @@ class QuestionParser:
         poss = next(w for w in result if w.dep_ == 'poss')
         entity = [w.text for w in result if w.pos_ == 'PROPN']
         prop = [w.text for w in result[-1:]]
-        #entity = [w.text for w in prop_ent.subtree]
+        # entity = [w.text for w in prop_ent.subtree]
         return entity, prop, ''
 
     @staticmethod
     def who_did_x(result):
-        #print("who_did_x")
+        # print("who_did_x")
         prop = ['who', next(w for w in result if w.dep_ == 'ROOT').lemma_]
         entity = [w.text for w in result[end:]]
         return entity, prop, ''
 
     @staticmethod
     def what_did_x(result):
-        #print("what_did_x")
+        # print("what_did_x")
         i = 0
         for item in result:
             if item.pos_ == "NOUN" and (item.dep_ == "nsubj" or item.dep_ == "dobj"):
@@ -171,51 +169,57 @@ class QuestionSolver:
 
         self.query_dict = {
             'when_where': 'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" .'
-                           '  }}'
-                           '}}',
-            'x_of_y':      'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" .'
-                           '  }}'
-                           '}}',
-            'what_did_x':   'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" .'
-                           '  }}'
-                           '}}',
-            'short_poss':  'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" .'
-                           '  }}'
-                           '}}'
+                          '  wd:{} wdt:{} ?answer . '
+                          '  SERVICE wikibase:label {{ '
+                          '    bd:serviceParam wikibase:language "en" .'
+                          '  }}'
+                          '}}',
+            'x_of_y': 'SELECT ?answerLabel WHERE {{ '
+                      '  wd:{} wdt:{} ?answer . '
+                      '  SERVICE wikibase:label {{ '
+                      '    bd:serviceParam wikibase:language "en" .'
+                      '  }}'
+                      '}}',
+            'what_did_x': 'SELECT ?answerLabel WHERE {{ '
+                          '  wd:{} wdt:{} ?answer . '
+                          '  SERVICE wikibase:label {{ '
+                          '    bd:serviceParam wikibase:language "en" .'
+                          '  }}'
+                          '}}',
+            'short_poss': 'SELECT ?answerLabel WHERE {{ '
+                          '  wd:{} wdt:{} ?answer . '
+                          '  SERVICE wikibase:label {{ '
+                          '    bd:serviceParam wikibase:language "en" .'
+                          '  }}'
+                          '}}'
         }
 
     def __call__(self, question):
         try:
             # parse de vraag die gesteld werd, maar haal eerst het vraagteken en evt. witruimte weg
             q_type, prop, ent, extra = self.parser(question.strip().strip(' ?'))
-            answers = self.query_answer(q_type, prop, ent)
+            answers = self.query_answer(q_type, prop, ent, extra)
 
         # geen antwoord gevonden
-        except:
-            #print(err)
-            return
+        except NoAnswerError:
+            raise
 
+        # print_answers(answers)
+
+        return answers
+
+    def print_question(self, question):
+        for token in self.parser.nlp(question.strip()):
+            print("\t".join((token.text, token.lemma_, token.pos_, token.tag_, token.dep_, token.head.lemma_)))
+
+    @staticmethod
+    def print_answers(answers):
         for answer in answers:
             try:
                 date = datetime.strptime(answer, '%Y-%m-%dT%H:%M:%SZ')
-                #print(date.strftime('%m/%d/%Y'))
+                print(date.strftime('%m/%d/%Y'))
             except ValueError:
-                #print(answer)
-                pass
-
-        return answers
+                print(answer)
 
     # deze functie kan entities makkelijk vinden, moet nog worden getest ivm hoofdlettergevoeligheid
     @staticmethod
@@ -244,17 +248,19 @@ class QuestionSolver:
         # query de wikidata api om wikidata entities te vinden voor property en entity
         wikidata_props = self.query_wikidata_api(prop, True)
         wikidata_entities = self.query_wikidata_api(entity)
-        #print(wikidata_props,"\n",wikidata_entities)
+        # print(wikidata_props,"\n",wikidata_entities)
         # niks gevonden voor de entity of de property
-        if wikidata_props is None or wikidata_entities is None:
-            raise NoAnswerError
+        if wikidata_props is None:
+            raise NoAnswerError('Could not find what you asked about')
+
+        if wikidata_entities is None:
+            raise NoAnswerError('Could not find whom you asked about')
 
         # we vinden meerdere entities en properties: probeer per entity de gevonden properties
         for wikidata_entity in wikidata_entities:
             for wikidata_prop in wikidata_props:
                 # de juiste query moet nog gekozen worden op basis van question type
                 query_string = self.query_dict[question_type.lower()]
-
 
                 # vul de query string met de gevonden entity/property/extra in de vraag
                 query_string = query_string.format(wikidata_entity, wikidata_prop, extra)
@@ -267,65 +273,51 @@ class QuestionSolver:
                     continue
 
                 # resultaat / resultaten gevonden, return de resultaten
-                # dit gaat ervan uit dat de antwoorden als 'answerLabel' geselecteerd worden in de query
-                answers = []
-                for result in results:
-                    for var in result:
-                        answers.append('{}'.format(result[var]['value']))
-                return answers
-                # return map(lambda x: x['answerLabel']['value'], results)
-
+                return [result[var]['value'] for result in results for var in result]
 
         raise NoAnswerError
 
 
 def main():
-    nlp = spacy.load('en')
     print('Loading up QA System...')
     qa_system = QuestionSolver()
     print('Ready to go!\n')
-    correct_answers = 0
-    wrong_answers = 0
     # answer questions from standard input
-    if len(sys.argv)>1:
-        for question in fileinput.input():
-            right_answer = 0
-            wrong_answer = 0
-            #print("-----------------------\n")
-            q, url, *answers = question.strip().split('\t')
-            #print(q)
-            #print("Actual answer(s):")
-            #for a in answers:
-                #print(a)
-            answers_current = qa_system(q)
-            #print("Our answer(s):")
-            if answers_current != None:
+    if len(sys.argv) == 2:
+        correct_answers = 0
+        num_questions = 0
+        with open(sys.argv[1], 'r') as questions_file:
+            for question in questions_file:
+                num_questions += 1
+
+                # print("-----------------------\n")
+                q, url, *answers = question.strip().split('\t')
+                # print(q)
+                # print("Actual answer(s):")
+                # for a in answers:
+                # print(a)
+                try:
+                    answers_current = qa_system(q)
+                except NoAnswerError:
+                    continue
+                # print("Our answer(s):")
+                right_answer = 0
                 for answer in answers_current:
-                    #print(answer)
+                    # print(answer)
                     if answer.strip() in answers:
-                        right_answer+=1
-                    else:
-                        wrong_answer+=1
-                if right_answer > 0 and (wrong_answer == 0 or right_answer/wrong_answer >= 0.5):
-                    correct_answers+=1
-                else:
-                    wrong_answers+=1
-                #print()
-            else:
-                #print("No answer.\n")
-                wrong_answers+=1
+                        right_answer += 1
+                if right_answer / len(answers_current) >= 0.5:
+                    correct_answers += 1
+        print("Accuracy: ", correct_answers / num_questions)
     else:
-        for question in fileinput.input():
-            for token in nlp(question.strip()):
-                print("\t".join((token.text, token.lemma_, token.pos_,token.tag_, token.dep_, token.head.lemma_)))
-            answers_current = qa_system(question)
-            if answers_current != None:
-                for answer in answers_current:
-                    print(answer)
-                print()
-            else:
-                print("No answer.\n")         
-    print("Accuracy: ", correct_answers/(correct_answers+wrong_answers))
+        for question in sys.stdin:
+            qa_system.print_question(question)
+            try:
+                answers_current = qa_system(question)
+                qa_system.print_answers(answers_current)
+            except NoAnswerError as err:
+                print(err)
+
 
 if __name__ == '__main__':
     main()
