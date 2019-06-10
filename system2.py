@@ -55,24 +55,39 @@ class QuestionParser:
     def init_matcher(self):
         # hier komen de patterns voor het identificeren van vraagtypes
         matcher = Matcher(self.nlp.vocab)
-        matcher.add('X_OF_Y', None, [{'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
-                                     {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}, {'DEP': "det", "OP": "?"},
-                                     {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "*"}, {'LOWER': "of"}])
-        matcher.add('POSS', None, [{'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
-                                   {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}, {'DEP': "det", "OP": "?"},
-                                   {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "*"},
-                                   {'LOWER': {'IN': ['his', 'her', 'their']}}])
-        matcher.add('SHORT_POSS', None, [{'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
-                                         {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}, {'DEP': "det", "OP": "?"},
-                                         {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "*"}, {'LOWER': {'IN': ["'s"]}}])
-        # matcher.add('WHEN_WHERE', None, [{'LOWER': {'IN': ['when', 'where']}},
-        #                                 {'DEP': {'IN': ['ROOT', 'aux', 'auxpass']}}])
-        matcher.add('WHO_DID_X', None, [{'DEP': 'nsubj', 'LOWER': 'who'}, {'DEP': 'ROOT'}])
-        matcher.add('WHAT_DID_X', None, [{"DEP": "det"},
-                                         {"POS": "ADJ", "DEP": "amod", "OP": "*"},
-                                         {"POS": "NOUN", "DEP": "compound", "OP": "*"},
-                                         {"POS": "NOUN", "DEP": {'IN': ['dobj', 'nsub']}},
-                                         {"POS": "VERB", "DEP": {'IN': ['aux', 'ROOT']}}])
+        matcher.add('X_OF_Y', None, [
+            {'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
+            {'LOWER': {'IN': ['is', 'are', 'was', 'were']}}
+        ])
+        matcher.add('POSS', None, [
+            {'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
+            {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},
+            {'DEP': "det", "OP": "?"},
+            {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "*"},
+            {'LOWER': {'IN': ['his', 'her', 'their']}}
+        ])
+        matcher.add('SHORT_POSS', None, [
+            {'DEP': {'IN': ['attr', 'advmod']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
+            {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},
+            {'DEP': "det", "OP": "?"},
+            {"POS": {"IN": ["NOUN", "PROPN"]}, "OP": "*"},
+            {'LOWER': {'IN': ["'s"]}}
+        ])
+        # matcher.add('WHEN_WHERE', None, [
+        #     {'LOWER': {'IN': ['when', 'where']}},
+        #     {'DEP': {'IN': ['ROOT', 'aux', 'auxpass']}}
+        # ])
+        matcher.add('WHO_DID_X', None, [
+            {'DEP': 'nsubj', 'LOWER': 'who'},
+            {'DEP': 'ROOT'}
+        ])
+        matcher.add('WHAT_DID_X', None, [
+            {"DEP": "det"},
+            {"POS": "ADJ", "DEP": "amod", "OP": "*"},
+            {"POS": "NOUN", "DEP": "compound", "OP": "*"},
+            {"POS": "NOUN", "DEP": {'IN': ['dobj', 'nsub']}},
+            {"POS": "VERB", "DEP": {'IN': ['aux', 'ROOT']}}
+        ])
         return matcher
 
     # translator functie om de uiteindelijke entity en property teksten te filteren/rewriten
@@ -123,7 +138,7 @@ class QuestionParser:
 
     @staticmethod
     def x_of_y(result):
-        print("x_of_y")
+        print(result)
         prop_ent = next(w for w in result if w.dep_ == 'pobj')
         prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
         entity = [w.text for w in prop_ent.subtree]
@@ -132,7 +147,7 @@ class QuestionParser:
 
     @staticmethod
     def short_poss(result):
-        print("short_poss")
+        # print("short_poss")
         poss = next(w for w in result if w.dep_ == 'poss')
         entity = [w.text for w in result if w.pos_ == 'PROPN']
         prop = [w.text for w in result[-1:]]
@@ -198,15 +213,11 @@ class QuestionSolver:
         try:
             # parse de vraag die gesteld werd, maar haal eerst het vraagteken en evt. witruimte weg
             q_type, prop, ent, extra = self.parser(question.strip().strip(' ?'))
-            answers = self.query_answer(q_type, prop, ent, extra)
+            return self.query_answer(q_type, prop, ent, extra)
 
         # geen antwoord gevonden
         except NoAnswerError:
             raise
-
-        # print_answers(answers)
-
-        return answers
 
     def print_question(self, question):
         for token in self.parser.nlp(question.strip()):
