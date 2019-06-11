@@ -115,6 +115,11 @@ class QuestionParser:
                         {'DEP': {'IN': ['nsubj', 'nsubjpass', 'adv']}},
                         {'POS': 'VERB'},
                     ])
+        matcher.add('HOW_MANY_X', None,
+                    [
+                        {'LOWER': 'how'},
+                        {'LOWER': 'many'},
+                    ])
         # matcher.add('WHO_DID_X', None, [
         #     {'DEP': 'nsubj', 'LOWER': 'who'},
         #     {'DEP': 'ROOT'},
@@ -250,6 +255,20 @@ class QuestionParser:
         entity = entity[0]
         return entity.split(), prop.split(), None
 
+    @staticmethod
+    def how_many_x(result):
+        i = 0
+        for item in result:
+            if item.pos_ == "NOUN" and (item.dep_ == "nsubj" or item.dep_ == "dobj"):
+                prop = [result[i].text]
+                break
+            else:
+                i += 1
+        ent_token = next(w for w in result if w.dep_ in ['nsubj', 'attr'] and w.pos_ in ['NOUN', 'PROPN', 'ADJ'])
+        entity = [w.text for w in ent_token.subtree]
+        print(prop)
+        print(entity)
+        return entity, prop, None
 
 class QuestionSolver:
     def __init__(self):
@@ -296,6 +315,12 @@ class QuestionSolver:
                            '  }}'
                            '}}',
             'WHAT_DID_X':  'SELECT ?answerLabel WHERE {{ '
+                           '  wd:{} wdt:{} ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" . '
+                           '  }}'
+                           '}}',
+            'HOW_MANY_X':  'SELECT (count(?answer) as ?answerLabel) WHERE {{ '
                            '  wd:{} wdt:{} ?answer . '
                            '  SERVICE wikibase:label {{ '
                            '    bd:serviceParam wikibase:language "en" . '
@@ -357,7 +382,9 @@ class QuestionSolver:
         # query de wikidata api om wikidata entities te vinden voor property en entity
         # dirty hack om een element in de lijst te hebben als de property unset is (zoals bij "What is X?" vragen)
         wikidata_props = self.query_wikidata_api(prop, True) if prop is not None else ['']
+        print(wikidata_props)
         wikidata_entities = self.query_wikidata_api(ent)
+        print(wikidata_entities)
         # niks gevonden voor de entity of de property
         if wikidata_props is None:
             raise NoAnswerError('Could not find the property you asked for')
@@ -373,6 +400,7 @@ class QuestionSolver:
 
                 # vul de query string met de gevonden entity/property/extra in de vraag
                 query_string = query_string.format(wikidata_entity, wikidata_prop, extra)
+                print(query_string)
                 self.sparql.setQuery(query_string)
                 self.sparql.setReturnFormat(JSON)
                 results = self.sparql.query().convert()['results']['bindings']
