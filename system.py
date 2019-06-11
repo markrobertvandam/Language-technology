@@ -346,7 +346,7 @@ class QuestionParser:
                     entity.append(w.text)
         prop  = []
         for item in result:
-            prop = result[-3].lemma_
+            prop = result[-2].lemma_
             if prop == 'born':
                 prop = ['birth', 'date']
             elif prop == 'died' or prop == 'die':
@@ -369,7 +369,7 @@ class QuestionParser:
                     entity.append(w.text)
         prop = []
         for item in result:
-            prop = result[-3].lemma_
+            prop = result[-2].lemma_
             if prop == 'born':
                 prop = ['birth', 'place']
             if prop == 'died' or prop == 'die':
@@ -404,7 +404,7 @@ class QuestionParser:
             for w in result:
                 if w.pos_ == "PROPN":
                     entity.append(w.text)
-        prop_one = result[-3].lemma_
+        prop_one = result[-2].lemma_
         prop_two = result[-1].lemma_
         if prop_one == 'die':
             prop_one = 'cause of death'
