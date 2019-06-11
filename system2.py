@@ -323,9 +323,7 @@ class QuestionParser:
             for w in result:
                 if w.pos_ == "PROPN":
                     entity.append(w.text)
-        print(prop)
-        print(entity)
-        return entity, prop, None
+        return entity.split(), prop.split(), None
 
     @staticmethod
     def when_did_was(result):
