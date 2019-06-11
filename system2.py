@@ -215,6 +215,7 @@ class QuestionParser:
             prop_ent = next(w for w in result if w.dep_ == 'pobj')
             prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
             entity = [w.text for w in prop_ent.subtree]
+            print(prop)
             return entity, prop, None
         except StopIteration:
             return None, None, None
@@ -345,10 +346,15 @@ class QuestionParser:
                     entity.append(w.text)
         prop  = []
         for item in result:
-            if item.text == 'born':
+            prop = result[-3].lemma_
+            if prop == 'born':
                 prop = ['birth', 'date']
-            if item.text == 'died' or item.text == 'die':
+            elif prop == 'died' or prop == 'die':
                 prop = ['death', 'date']
+            elif prop == 'founded' or prop == 'started' or prop == 'found' or prop == 'begin' or prop == 'start':
+                prop = ['the founding']
+        print(prop)
+            
         return entity, prop, None
 
     @staticmethod
@@ -364,10 +370,12 @@ class QuestionParser:
                     entity.append(w.text)
         prop = []
         for item in result:
-            if item.text == 'born':
+            prop = result[-3].lemma_
+            if prop == 'born':
                 prop = ['birth', 'place']
-            if item.text == 'died' or item.text == 'die':
+            if prop == 'died' or prop == 'die':
                 prop = ['death', 'place']
+
         return entity, prop, None
 
     @staticmethod
@@ -565,6 +573,8 @@ class QuestionSolver:
             for wikidata_prop in wikidata_props:
                 # de juiste query moet nog gekozen worden op basis van question type
                 query_string = self.query_dict[question_type]
+                print(wikidata_prop)
+                print(wikidata_entity)
 
                 # vul de query string met de gevonden entity/property/extra in de vraag
                 query_string = query_string.format(wikidata_entity, wikidata_prop, extra)
