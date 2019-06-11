@@ -138,9 +138,19 @@ class QuestionParser:
             {'DEP': 'det'},
             {'POS': 'ADJ', 'DEP': 'amod', 'OP': '*'},
             {'POS': 'NOUN', 'DEP': 'compound', 'OP': '*'},
-            {'POS': 'NOUN', 'DEP': {'IN': ['dobj', 'nsub']}},
+            {'POS': 'NOUN', 'DEP': {'IN': ['dobj', 'nsub', 'pcomp']}},
             {'POS': 'VERB', 'DEP': {'IN': ['aux', 'ROOT']}},
         ])
+
+        matcher.add('FROM_WHICH_X', None, [
+            {'LOWER': 'from'},
+            {'LOWER': {'IN': ['which', 'what']}},
+            {'POS': 'ADJ', 'DEP': 'amod', 'OP': '*'},
+            {'POS': 'NOUN', 'DEP': 'compound', 'OP': '*'},
+            {'POS': 'NOUN', 'DEP': {'IN': ['dobj', 'nsubj', 'pcomp']}},
+            {'POS': 'VERB'},
+            ])
+    
         return matcher
 
     # translator functie om de uiteindelijke entity en property teksten te filteren/rewriten
@@ -263,7 +273,7 @@ class QuestionParser:
         # print("what_did_x")
         i = 0
         for item in result:
-            if item.pos_ == "NOUN" and (item.dep_ == "nsubj" or item.dep_ == "dobj"):
+            if item.pos_ == "NOUN" and (item.dep_ == "nsubj" or item.dep_ == "dobj" or item.dep_ == "pcomp"):
                 prop = result[i].text
                 break
             else:
@@ -296,30 +306,37 @@ class QuestionParser:
     @staticmethod
     def when_did_was(result):
         entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
-        prop_one = result[-3].lemma_
-        prop_two = result[-1].lemma_
-        if prop_one == 'bear':
-            prop_one = 'birthdate'
-        elif prop_one == 'die':
-            prop_one = 'deathdate'
-        prop = [prop_one]
-        print(prop)
-        print(entity)
+        for item in result:
+            if item.text == 'born':
+                prop = ['birth', 'date']
+            if item.text == 'died' or item.text == 'die':
+                prop = ['death', 'date']
         return entity, prop, None
 
     @staticmethod
     def where_did_was(result):
         entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
-        prop_one = result[-3].lemma_
-        prop_two = result[-1].lemma_
-        if prop_one == 'bear':
-            prop_one = 'birth'
-        elif prop_one == 'die':
-            prop_one = 'deathplace'
-        prop = [prop_one]
-        print(prop)
-        print(entity)
+        for item in result:
+            if item.text == 'born':
+                prop = ['birth', 'place']
+            if item.text == 'died' or item.text == 'die':
+                prop = ['death', 'place']
         return entity, prop, None
+
+    @staticmethod
+    def from_which_x(result):
+        entity = [e.text for e in result.ents]
+        try:
+            entity = entity[0]
+        except IndexError:
+            entity = []
+            for w in result:
+                if w.pos_ == "PROPN":
+                    entity.append(w.text)
+        for i, word in enumerate(result):
+            if word.text.lower() == "which" or word.text.lower() == "what":
+                prop = result[i+1].text
+        return entity.split(), prop.split(), None
 
 class QuestionSolver:
     def __init__(self):
@@ -390,6 +407,12 @@ class QuestionSolver:
                            '  }}'
                            '}}',
             'HOW_MANY_X':  'SELECT (count(?answer) as ?answerLabel) WHERE {{ '
+                           '  wd:{} wdt:{} ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" . '
+                           '  }}'
+                           '}}',
+            'FROM_WHICH_X':     'SELECT ?answerLabel WHERE {{ '
                            '  wd:{} wdt:{} ?answer . '
                            '  SERVICE wikibase:label {{ '
                            '    bd:serviceParam wikibase:language "en" . '
