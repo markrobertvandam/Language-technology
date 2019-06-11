@@ -382,9 +382,7 @@ class QuestionSolver:
         # query de wikidata api om wikidata entities te vinden voor property en entity
         # dirty hack om een element in de lijst te hebben als de property unset is (zoals bij "What is X?" vragen)
         wikidata_props = self.query_wikidata_api(prop, True) if prop is not None else ['']
-        print(wikidata_props)
         wikidata_entities = self.query_wikidata_api(ent)
-        print(wikidata_entities)
         # niks gevonden voor de entity of de property
         if wikidata_props is None:
             raise NoAnswerError('Could not find the property you asked for')
@@ -400,7 +398,6 @@ class QuestionSolver:
 
                 # vul de query string met de gevonden entity/property/extra in de vraag
                 query_string = query_string.format(wikidata_entity, wikidata_prop, extra)
-                print(query_string)
                 self.sparql.setQuery(query_string)
                 self.sparql.setReturnFormat(JSON)
                 results = self.sparql.query().convert()['results']['bindings']
