@@ -130,6 +130,12 @@ class QuestionParser:
                         {'LOWER': {'IN': ['where']}},
                         {'LOWER': {'IN': ['did','was']}},
                     ])
+
+        matcher.add('HOW_DID', None,
+                    [
+                        {'LOWER': {'IN': ['how']}},
+                        {'LOWER': {'IN': ['did']}},
+                    ])
         # matcher.add('WHO_DID_X', None, [
         #     {'DEP': 'nsubj', 'LOWER': 'who'},
         #     {'DEP': 'ROOT'},
@@ -321,6 +327,18 @@ class QuestionParser:
         print(entity)
         return entity, prop, None
 
+    @staticmethod
+    def how_did(result):
+        entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
+        prop_one = result[-3].lemma_
+        prop_two = result[-1].lemma_
+        if prop_one == 'die':
+            prop_one = 'cause of death'
+        prop = [prop_one]
+        print(prop)
+        print(entity)
+        return entity, prop, None
+
 class QuestionSolver:
     def __init__(self):
         self.sparql = SPARQLWrapper('https://query.wikidata.org/sparql')
@@ -384,6 +402,12 @@ class QuestionSolver:
                            '  }}'
                            '}}',
             'WHERE_DID_WAS':  'SELECT ?answerLabel WHERE {{ '
+                           '  wd:{} wdt:{} ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" . '
+                           '  }}'
+                           '}}',
+            'HOW_DID':  'SELECT ?answerLabel WHERE {{ '
                            '  wd:{} wdt:{} ?answer . '
                            '  SERVICE wikibase:label {{ '
                            '    bd:serviceParam wikibase:language "en" . '
