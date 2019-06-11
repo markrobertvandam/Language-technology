@@ -315,31 +315,37 @@ class QuestionParser:
 
     @staticmethod
     def when_did_was(result):
-        entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
-        prop_one = result[-3].lemma_
-        prop_two = result[-1].lemma_
-        if prop_one == 'bear':
-            prop_one = 'birthdate'
-        elif prop_one == 'die':
-            prop_one = 'deathdate'
-        prop = [prop_one]
-        print(prop)
-        print(entity)
-        return entity, prop, None
+        try:
+            entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
+            prop_one = result[-3].lemma_
+            prop_two = result[-1].lemma_
+            if prop_one == 'bear':
+                prop_one = 'birthdate'
+            elif prop_one == 'die':
+                prop_one = 'deathdate'
+            prop = [prop_one]
+            print(prop)
+            print(entity)
+            return entity, prop, None
+        except StopIteration:
+            return None, None, None
 
     @staticmethod
     def where_did_was(result):
-        entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
-        prop_one = result[-3].lemma_
-        prop_two = result[-1].lemma_
-        if prop_one == 'bear':
-            prop_one = 'birth'
-        elif prop_one == 'die':
-            prop_one = 'deathplace'
-        prop = [prop_one]
-        print(prop)
-        print(entity)
-        return entity, prop, None
+        try:
+            entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
+            prop_one = result[-3].lemma_
+            prop_two = result[-1].lemma_
+            if prop_one == 'bear':
+                prop_one = 'birth'
+            elif prop_one == 'die':
+                prop_one = 'deathplace'
+            prop = [prop_one]
+            print(prop)
+            print(entity)
+            return entity, prop, None
+        except StopIteration:
+            return None, None, None
 
 class QuestionSolver:
     def __init__(self):
