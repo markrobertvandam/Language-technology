@@ -39,9 +39,10 @@ class QuestionParser:
 
     # parse een vraag met de juiste parser functie en translate de entity/property
     def __call__(self, question):
+        question = question.strip()
         if question[-1] != "?":
             question+="?"
-        result = self.nlp(question.strip())
+        result = self.nlp(question)
         try:
             match_id, start, end = self.matcher(result)[0]
         except IndexError:
@@ -157,6 +158,12 @@ class QuestionParser:
             {'POS': 'VERB'},
             ])
     
+        matcher.add('DID_X',None,[
+            {'LOWER': {'IN': ['did','does']}},
+            {'DEP': 'det', 'OP': '?'},
+            {'DEP': {'IN': ['amod', 'compound', 'attr','nsubj']}, 'OP': '*'},
+            {'LOWER': {'IN': ['play','compose','write','perform','practice','sing','influence']}}
+            ])
         return matcher
 
     # translator functie om de uiteindelijke entity en property teksten te filteren/rewriten
@@ -404,6 +411,21 @@ class QuestionParser:
         prop = [prop_one]
         return entity, prop, None
 
+    @staticmethod
+    def did_x(result):
+        print("did_x")
+        try:
+            verb = [next(w for w in result if w.dep_ == 'ROOT')]
+            entity = [w.lemma_ for w in result[1:list(result).index(verb[0])]]
+            prop = [w.lemma_ for w in verb]
+            answer = [w.lemma_ for w in result[list(result).index(verb[0])+1:-1]]
+            print(prop)
+            print(entity)
+            print(answer)
+            return entity, prop, None
+        except StopIteration:
+            return None, None, None
+
 class QuestionSolver:
     def __init__(self):
         self.sparql = SPARQLWrapper('https://query.wikidata.org/sparql')
@@ -484,12 +506,13 @@ class QuestionSolver:
                            '    bd:serviceParam wikibase:language "en" . '
                            '  }}'
                            '}}',
-            'FROM_WHICH_X':     'SELECT ?answerLabel WHERE {{ '
+            'FROM_WHICH_X':'SELECT ?answerLabel WHERE {{ '
                            '  wd:{} wdt:{} ?answer . '
                            '  SERVICE wikibase:label {{ '
                            '    bd:serviceParam wikibase:language "en" . '
                            '  }}'
                            '}}',
+            'DID_X':       'ASK {{wd:{} wdt:{} wd:{} .}}',
         }
 
     def __call__(self, question):
@@ -517,7 +540,7 @@ class QuestionSolver:
                 answers[i] = date.strftime('%m/%d/%Y')
             except ValueError:
                 pass
-
+            print(answers[i])
         return answers
 
     # deze functie kan entities makkelijk vinden, moet nog worden getest ivm hoofdlettergevoeligheid

@@ -8,3 +8,5 @@
 8	How many children does Chris Martin have?
 9	In what genres does Taylor Swift perform?
 10	Stewart Copeland was the drummer with which band?
+11	Did Michael Jackson play piano?
+12	Did Vivaldi compose four seasons?
