@@ -187,9 +187,9 @@ class QuestionParser:
     @staticmethod
     def possessive(result):
         print("short_poss")
-        poss = next(w for w in result if w.dep_ == 'poss')
+        poss = [w for w in result if w.dep_ == 'case']
         entity = [w.text for w in result if w.pos_ == 'PROPN']
-        prop = [w.lemma_ for w in result[-1:]]
+        prop = [w.lemma_ for w in result[list(result).index(poss[0])+1:-3]]
         # entity = [w.text for w in prop_ent.subtree]
         print(prop,entity)
         return entity, prop, None
