@@ -4,9 +4,9 @@
 4	Menagerie
 5	myocardial infarction	combined drug intoxication
 6	Answer not found
-7	No
+7	Yes
 8	2
 9	country music	pop rock
 10	Answer not found
-11	No
+11	Yes
 12	No

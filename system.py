@@ -416,6 +416,9 @@ class QuestionParser:
             else:
                 entity = [w.lemma_ for w in result[1:list(result).index(verb[0])]]
                 answer = [w.lemma_ for w in result[list(result).index(verb[0]) + 1:-1]]
+
+            if prop[0] == "play":
+                prop = ["instrument"]
             return entity, prop, answer
         except StopIteration:
             return None, None, None
@@ -587,7 +590,7 @@ class QuestionSolver:
 
                 if question_type == 'DID_X':
                     result = self.sparql.query().convert()['boolean']
-                    return ['Yes'] if result == 'true' else ['No']
+                    return ['Yes'] if result else ['No']
 
                 results = self.sparql.query().convert()['results']['bindings']
 
