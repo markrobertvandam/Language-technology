@@ -375,8 +375,6 @@ class QuestionParser:
                 prop = ['birth', 'place']
             if prop == 'died' or prop == 'die':
                 prop = ['death', 'place']
-        print(prop)
-        print(entity)
 
         return entity, prop, None
 
@@ -416,7 +414,6 @@ class QuestionParser:
 
     @staticmethod
     def did_x(result):
-        print("did_x")
         try:
             verb = [next(w for w in result if w.dep_ == 'ROOT')]
             prop = [w.lemma_ for w in verb]
