@@ -39,7 +39,9 @@ class QuestionParser:
 
     # parse een vraag met de juiste parser functie en translate de entity/property
     def __call__(self, question):
-        result = self.nlp(question.strip().strip(' ?'))
+        if question[-1] != "?":
+            question+="?"
+        result = self.nlp(question.strip())
         try:
             match_id, start, end = self.matcher(result)[0]
         except IndexError:
@@ -61,8 +63,8 @@ class QuestionParser:
                         {'DEP': {'IN': ['attr', 'advmod', 'nsubj']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
                         {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},
                         {'DEP': 'det', 'OP': '?'},
-                        {'DEP': {'IN': ['amod', 'compound', 'attr']}, 'OP': '*'},
-                        {'LOWER': 'of'},
+                        {'DEP': {'IN': ['amod', 'compound', 'attr','nsubj']}, 'OP': '*'},
+                        {'LOWER': 'of'}
                     ])
         matcher.add('POSSESSIVE', None,
                     [
@@ -72,13 +74,21 @@ class QuestionParser:
                         {'POS': {'IN': ['NOUN', 'PROPN']}, 'OP': '*'},
                         {'LOWER': {'IN': ['\'s']}},
                     ])
-        matcher.add('WHO_WHAT_IS', None,
+        matcher.add('WHO_IS', None,
                     [
-                        {'LOWER': {'IN': ['who', 'what']}},
+                        {'LOWER': {'IN': ['who']}},
                         {'LEMMA': 'be'},
                         {'DEP': 'det', 'OP': '?'},
                         {'DEP': 'compound', 'OP': '*'},
-                        {'DEP': {'IN': ['attr', 'nsubj']}},
+                        {'DEP': {'IN': ['attr', 'nsubj']}},{'DEP': 'punct'}
+                    ])
+        matcher.add('WHAT_IS', None,
+                    [
+                        {'LOWER': {'IN': ['what']}},
+                        {'LEMMA': 'be'},
+                        {'DEP': 'det', 'OP': '?'},
+                        {'DEP': 'compound', 'OP': '*'},
+                        {'DEP': {'IN': ['attr', 'nsubj']}},{'DEP': 'punct'}
                     ])
         matcher.add('WHAT_MEANS', None,
                     [
@@ -163,6 +173,7 @@ class QuestionParser:
     # hier is "2013" de Z value, omdat er een specifiek jaartal moet worden opgezocht
     @staticmethod
     def x_of_y(result):
+        print("x_of_y")
         prop_ent = next(w for w in result if w.dep_ == 'pobj')
         prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
         entity = [w.text for w in prop_ent.subtree]
@@ -170,20 +181,32 @@ class QuestionParser:
 
     @staticmethod
     def possessive(result):
-        # print("short_poss")
+        print("short_poss")
         poss = next(w for w in result if w.dep_ == 'poss')
         entity = [w.text for w in result if w.pos_ == 'PROPN']
-        prop = [w.text for w in result[-1:]]
+        prop = [w.lemma_ for w in result[-1:]]
         # entity = [w.text for w in prop_ent.subtree]
+        print(prop,entity)
         return entity, prop, None
 
     @staticmethod
-    def who_what_is(result):
+    def who_is(result):
+        print("Who_is")
         # zoek de entity. Dit is een nsubj of een attr dependency, maar de eerste attr is altijd
-        # "Who" of "What". Kies daarom uitsluitend woorden met de POS-tag "NOUN" of "PROPN"
+        # "Who" Kies daarom uitsluitend woorden met de POS-tag "NOUN" of "PROPN"
         ent_token = next(w for w in result if w.dep_ in ['nsubj', 'attr'] and w.pos_ in ['NOUN', 'PROPN', 'ADJ'])
         entity = [w.text for w in ent_token.subtree]
+        print(entity)
+        return entity, None, None
 
+    @staticmethod
+    def what_is(result):
+        print("What_is")
+        # zoek de entity. Dit is een nsubj of een attr dependency, maar de eerste attr is altijd
+        # "What". Kies daarom uitsluitend woorden met de POS-tag "NOUN" of "PROPN"
+        ent_token = next(w for w in result if w.dep_ in ['nsubj', 'attr'] and w.pos_ in ['NOUN', 'PROPN', 'ADJ'])
+        entity = [w.text for w in ent_token.subtree]
+        print(entity)
         return entity, None, None
 
     @staticmethod
@@ -248,7 +271,13 @@ class QuestionSolver:
                            '    bd:serviceParam wikibase:language "en" . '
                            '  }}'
                            '}}',
-            'WHO_WHAT_IS': 'SELECT ?entityLabel ?entityDescription WHERE {{ '
+            'WHO_IS': 'SELECT ?answerLabel WHERE {{ '
+                           '  wd:{} wdt:P1477 ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" . '
+                           '  }}'
+                           '}}',
+            'WHAT_IS': 'SELECT ?entityLabel ?entityDescription WHERE {{ '
                            '  BIND(wd:{} as ?entity) . '
                            '  SERVICE wikibase:label {{ '
                            '    bd:serviceParam wikibase:language "en" . '
