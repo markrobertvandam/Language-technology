@@ -114,6 +114,11 @@ class QuestionParser:
                         {'DEP': {'IN': ['nsubj', 'nsubjpass', 'adv']}},
                         {'POS': 'VERB'},
                     ])
+        matcher.add('HOW_MANY_X', None,
+                    [
+                        {'LOWER': 'how'},
+                        {'LOWER': 'many'},
+                    ])
         # matcher.add('WHO_DID_X', None, [
         #     {'DEP': 'nsubj', 'LOWER': 'who'},
         #     {'DEP': 'ROOT'},
@@ -259,6 +264,20 @@ class QuestionParser:
                     break
         return entity.split(), prop.split(), None
 
+    @staticmethod
+    def how_many_x(result):
+        i = 0
+        for item in result:
+            if item.pos_ == "NOUN" and (item.dep_ == "nsubj" or item.dep_ == "dobj"):
+                prop = [result[i].text]
+                break
+            else:
+                i += 1
+        ent_token = next(w for w in result if w.dep_ in ['nsubj', 'attr'] and w.pos_ in ['NOUN', 'PROPN', 'ADJ'])
+        entity = [w.text for w in ent_token.subtree]
+        print(prop)
+        print(entity)
+        return entity, prop, None
 
 class QuestionSolver:
     def __init__(self):
@@ -311,6 +330,12 @@ class QuestionSolver:
                            '  }}'
                            '}}',
             'WHAT_X_DID_Y':  'SELECT ?answerLabel WHERE {{ '
+                           '  wd:{} wdt:{} ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" . '
+                           '  }}'
+                           '}}',
+            'HOW_MANY_X':  'SELECT (count(?answer) as ?answerLabel) WHERE {{ '
                            '  wd:{} wdt:{} ?answer . '
                            '  SERVICE wikibase:label {{ '
                            '    bd:serviceParam wikibase:language "en" . '
