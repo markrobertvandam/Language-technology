@@ -604,17 +604,17 @@ def main():
                         answers_current = qa_system(q)
                     except NoAnswerError:
                         print('{}\t{}'.format(q, 'No answers found'), file=log_file)
-                        continue
                     # print('Our answer(s):')
                     right_answer = 0
-                    for answer in answers_current:
-                        # print(answer)
-                        if answer.strip() in answers:
-                            right_answer += 1
-                    if right_answer / len(answers_current) >= 0.5:
-                        correct_answers += 1
-                    else:
-                        print('{}\t{}\t{}'.format(q, answers, answers_current), file=log_file)
+                    if answers_current != None:
+                        for answer in answers_current:
+                            # print(answer)
+                            if answer.strip() in answers:
+                                right_answer += 1
+                        if right_answer / len(answers_current) >= 0.5:
+                            correct_answers += 1
+                        else:
+                            print('{}\t{}\t{}'.format(q, answers, answers_current), file=log_file)
         print('Accuracy: ', correct_answers / num_questions)
     else:
         for question in sys.stdin:
