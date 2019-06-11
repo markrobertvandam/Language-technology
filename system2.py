@@ -30,6 +30,7 @@ class QuestionParser:
         'invent':    'inventor',
         'bear':      'birth',
         'die':       'death',
+        'born':      'birth',
     }
 
     def __init__(self):
@@ -119,6 +120,16 @@ class QuestionParser:
                         {'LOWER': 'how'},
                         {'LOWER': 'many'},
                     ])
+        matcher.add('WHEN_DID_WAS', None,
+                    [
+                        {'LOWER': {'IN': ['when']}},
+                        {'LOWER': {'IN': ['did','was']}},
+                    ])
+        matcher.add('WHERE_DID_WAS', None,
+                    [
+                        {'LOWER': {'IN': ['where']}},
+                        {'LOWER': {'IN': ['did','was']}},
+                    ])
         # matcher.add('WHO_DID_X', None, [
         #     {'DEP': 'nsubj', 'LOWER': 'who'},
         #     {'DEP': 'ROOT'},
@@ -170,6 +181,9 @@ class QuestionParser:
 
         elif query == ['real', 'name']:
             new_query = 'full name'
+
+        elif query == ['bear']:
+            new_query = 'birth'
 
         return new_query
 
@@ -299,6 +313,34 @@ class QuestionParser:
         except StopIteration:
             return None, None, None
 
+    @staticmethod
+    def when_did_was(result):
+        entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
+        prop_one = result[-3].lemma_
+        prop_two = result[-1].lemma_
+        if prop_one == 'bear':
+            prop_one = 'birthdate'
+        elif prop_one == 'die':
+            prop_one = 'deathdate'
+        prop = [prop_one]
+        print(prop)
+        print(entity)
+        return entity, prop, None
+
+    @staticmethod
+    def where_did_was(result):
+        entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
+        prop_one = result[-3].lemma_
+        prop_two = result[-1].lemma_
+        if prop_one == 'bear':
+            prop_one = 'birth'
+        elif prop_one == 'die':
+            prop_one = 'deathplace'
+        prop = [prop_one]
+        print(prop)
+        print(entity)
+        return entity, prop, None
+
 class QuestionSolver:
     def __init__(self):
         self.sparql = SPARQLWrapper('https://query.wikidata.org/sparql')
@@ -350,6 +392,18 @@ class QuestionSolver:
                            '  }}'
                            '}}',
             'WHAT_X_DID_Y':  'SELECT ?answerLabel WHERE {{ '
+                           '  wd:{} wdt:{} ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" . '
+                           '  }}'
+                           '}}',
+            'WHEN_DID_WAS':  'SELECT ?answerLabel WHERE {{ '
+                           '  wd:{} wdt:{} ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" . '
+                           '  }}'
+                           '}}',
+            'WHERE_DID_WAS':  'SELECT ?answerLabel WHERE {{ '
                            '  wd:{} wdt:{} ?answer . '
                            '  SERVICE wikibase:label {{ '
                            '    bd:serviceParam wikibase:language "en" . '
