@@ -205,41 +205,53 @@ class QuestionParser:
     @staticmethod
     def x_of_y(result):
         print("x_of_y")
-        prop_ent = next(w for w in result if w.dep_ == 'pobj')
-        prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
-        entity = [w.text for w in prop_ent.subtree]
-        return entity, prop, None
+        try:
+            prop_ent = next(w for w in result if w.dep_ == 'pobj')
+            prop = [w.text for w in prop_ent.head.head.lefts] + [prop_ent.head.head.text]
+            entity = [w.text for w in prop_ent.subtree]
+            return entity, prop, None
+        except StopIteration:
+            return None, None, None
 
     @staticmethod
     def possessive(result):
         print("short_poss")
-        poss = [w for w in result if w.dep_ == 'case']
-        entity = [w.text for w in result if w.pos_ == 'PROPN']
-        prop = [w.lemma_ for w in result[list(result).index(poss[0])+1:-3]]
-        if prop == []:
-            prop = [w.lemma_ for w in result[list(result).index(poss[0])+1:-1]]
-        # entity = [w.text for w in prop_ent.subtree]
-        return entity, prop, None
+        try:
+            poss = [w for w in result if w.dep_ == 'case']
+            entity = [w.text for w in result if w.pos_ == 'PROPN']
+            prop = [w.lemma_ for w in result[list(result).index(poss[0])+1:-3]]
+            if prop == []:
+                prop = [w.lemma_ for w in result[list(result).index(poss[0])+1:-1]]
+            # entity = [w.text for w in prop_ent.subtree]
+            return entity, prop, None
+        except StopIteration:
+            return None, None, None
 
     @staticmethod
     def who_is(result):
         print("Who_is")
-        # zoek de entity. Dit is een nsubj of een attr dependency, maar de eerste attr is altijd
-        # "Who" Kies daarom uitsluitend woorden met de POS-tag "NOUN" of "PROPN"
-        ent_token = next(w for w in result if w.dep_ in ['nsubj', 'attr'] and w.pos_ in ['NOUN', 'PROPN', 'ADJ'])
-        entity = [w.text for w in ent_token.subtree]
-        print(entity)
-        return entity, None, None
+        try:
+            # zoek de entity. Dit is een nsubj of een attr dependency, maar de eerste attr is altijd
+            # "Who" Kies daarom uitsluitend woorden met de POS-tag "NOUN" of "PROPN"
+            ent_token = next(w for w in result if w.dep_ in ['nsubj', 'attr'] and w.pos_ in ['NOUN', 'PROPN', 'ADJ'])
+            entity = [w.text for w in ent_token.subtree]
+            print(entity)
+            return entity, None, None
+        except StopIteration:
+            return None, None, None
 
     @staticmethod
     def what_is(result):
         print("What_is")
-        # zoek de entity. Dit is een nsubj of een attr dependency, maar de eerste attr is altijd
-        # "What". Kies daarom uitsluitend woorden met de POS-tag "NOUN" of "PROPN"
-        ent_token = next(w for w in result if w.dep_ in ['nsubj', 'attr'] and w.pos_ in ['NOUN', 'PROPN', 'ADJ'])
-        entity = [w.text for w in ent_token.subtree]
-        print(entity)
-        return entity, None, None
+        try:
+            # zoek de entity. Dit is een nsubj of een attr dependency, maar de eerste attr is altijd
+            # "What". Kies daarom uitsluitend woorden met de POS-tag "NOUN" of "PROPN"
+            ent_token = next(w for w in result if w.dep_ in ['nsubj', 'attr'] and w.pos_ in ['NOUN', 'PROPN', 'ADJ'])
+            entity = [w.text for w in ent_token.subtree]
+            print(entity)
+            return entity, None, None
+        except StopIteration:
+            return None, None, None
 
     @staticmethod
     def what_means(result):
@@ -249,24 +261,29 @@ class QuestionParser:
         except StopIteration:
             ent_token = next(w for w in result if w.dep_ == 'nsubj')
         entity = [w.text for w in ent_token.subtree]
-
         return entity, None, None
 
     @staticmethod
     def when_where(result):
         # print("when_where")
-        entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
-        prop_one = result[0].lemma_
-        prop_two = result[-1].lemma_
-        prop = [prop_one, prop_two]
-        return entity, prop, None
+        try:
+            entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
+            prop_one = result[0].lemma_
+            prop_two = result[-1].lemma_
+            prop = [prop_one, prop_two]
+            return entity, prop, None
+        except StopIteration:
+            return None, None, None
 
     @staticmethod
     def who_did_x(result):
         # print("who_did_x")
-        prop = ['who', next(w for w in result if w.dep_ == 'ROOT').lemma_]
-        entity = []
-        return entity, prop, None
+        try:
+            prop = ['who', next(w for w in result if w.dep_ == 'ROOT').lemma_]
+            entity = []
+            return entity, prop, None
+        except StopIteration:
+            return None, None, None
 
     @staticmethod
     def what_x_did_y(result):
@@ -289,6 +306,7 @@ class QuestionParser:
         return entity.split(), prop.split(), None
 
     @staticmethod
+
     def how_many_x(result):
         i = 0
         for item in result:
@@ -430,7 +448,10 @@ class QuestionSolver:
         try:
             # parse de vraag die gesteld werd, maar haal eerst het vraagteken en evt. witruimte weg
             q_type, ent, prop, extra = self.parser(question)
-            return self.query_answer(q_type, ent, prop, extra)
+            if ent == None and prop == None:
+                raise NoAnswerError
+            else:
+                return self.query_answer(q_type, ent, prop, extra)
 
         # geen antwoord gevonden
         except NoAnswerError:
@@ -469,9 +490,10 @@ class QuestionSolver:
             'srlimit':     5,  # maximaal vijf entities per query
             'srprop':      '',
         }
-
-        results = get(self.wiki_api_url, params).json()['query']['search']
-
+        try:
+            results = get(self.wiki_api_url, params).json()['query']['search']
+        except KeyError:
+            raise NoAnswerError
         # als we naar properties zoeken moet het eerste deel "Property:" van de titel eraf gehaald worden
         # de wikidata link heeft namelijk de volgende opbouw: https://www.wikidata.org/wiki/Property:P576
         return [res['title'][9:] if prop_search else res['title'] for res in results] if results else None
@@ -480,7 +502,7 @@ class QuestionSolver:
         # query de wikidata api om wikidata entities te vinden voor property en entity
         # dirty hack om een element in de lijst te hebben als de property unset is (zoals bij "What is X?" vragen)
         wikidata_props = self.query_wikidata_api(prop, True) if prop is not None else ['']
-        wikidata_entities = self.query_wikidata_api(ent)
+        wikidata_entities = self.query_wikidata_api(ent) if ent is not None else ['']
         # niks gevonden voor de entity of de property
         if wikidata_props is None:
             raise NoAnswerError('Could not find the property you asked for')
