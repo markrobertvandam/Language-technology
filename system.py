@@ -584,6 +584,11 @@ class QuestionSolver:
                 query_string = query_string.format(wikidata_entity, wikidata_prop, extra)
                 self.sparql.setQuery(query_string)
                 self.sparql.setReturnFormat(JSON)
+
+                if question_type == 'DID_X':
+                    result = self.sparql.query().convert()['boolean']
+                    return ['Yes'] if result == 'true' else ['No']
+
                 results = self.sparql.query().convert()['results']['bindings']
 
                 # geen resultaten voor deze combinatie, probeer de volgende
