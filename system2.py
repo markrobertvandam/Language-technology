@@ -30,7 +30,6 @@ class QuestionParser:
         'invent':    'inventor',
         'bear':      'birth',
         'die':       'death',
-        'real name': 'full name',
     }
 
     def __init__(self):
@@ -119,13 +118,13 @@ class QuestionParser:
         #     {'DEP': 'nsubj', 'LOWER': 'who'},
         #     {'DEP': 'ROOT'},
         # ])
-        # matcher.add('WHAT_DID_X', None, [
-        #     {'DEP': 'det'},
-        #     {'POS': 'ADJ', 'DEP': 'amod', 'OP': '*'},
-        #     {'POS': 'NOUN', 'DEP': 'compound', 'OP': '*'},
-        #     {'POS': 'NOUN', 'DEP': {'IN': ['dobj', 'nsub']}},
-        #     {'POS': 'VERB', 'DEP': {'IN': ['aux', 'ROOT']}},
-        # ])
+        matcher.add('WHAT_X_DID_Y', None, [
+            {'DEP': 'det'},
+            {'POS': 'ADJ', 'DEP': 'amod', 'OP': '*'},
+            {'POS': 'NOUN', 'DEP': 'compound', 'OP': '*'},
+            {'POS': 'NOUN', 'DEP': {'IN': ['dobj', 'nsub']}},
+            {'POS': 'VERB', 'DEP': {'IN': ['aux', 'ROOT']}},
+        ])
         return matcher
 
     # translator functie om de uiteindelijke entity en property teksten te filteren/rewriten
@@ -164,6 +163,9 @@ class QuestionParser:
             if query[1] == 'from':
                 new_query = 'country of citizenship'
 
+        elif query == ['real', 'name']:
+            new_query = 'full name'
+
         return new_query
 
     # in de onderstaande functies komen de parsers voor elke pattern.
@@ -185,8 +187,9 @@ class QuestionParser:
         poss = [w for w in result if w.dep_ == 'case']
         entity = [w.text for w in result if w.pos_ == 'PROPN']
         prop = [w.lemma_ for w in result[list(result).index(poss[0])+1:-3]]
+        if prop == []:
+            prop = [w.lemma_ for w in result[list(result).index(poss[0])+1:-1]]
         # entity = [w.text for w in prop_ent.subtree]
-        print(prop,entity)
         return entity, prop, None
 
     @staticmethod
@@ -237,7 +240,7 @@ class QuestionParser:
         return entity, prop, None
 
     @staticmethod
-    def what_did_x(result):
+    def what_x_did_y(result):
         # print("what_did_x")
         i = 0
         for item in result:
@@ -247,7 +250,13 @@ class QuestionParser:
             else:
                 i += 1
         entity = [e.text for e in result.ents]
-        entity = entity[0]
+        try:
+            entity = entity[0]
+        except IndexError:
+            for j, it in enumerate(result):
+                if it.pos_ == "VERB":
+                    entity = result[j+1].text
+                    break
         return entity.split(), prop.split(), None
 
 
@@ -295,7 +304,13 @@ class QuestionSolver:
                            '    bd:serviceParam wikibase:language "en" . '
                            '  }}'
                            '}}',
-            'WHAT_DID_X':  'SELECT ?answerLabel WHERE {{ '
+            'WHO_DID_X':  'SELECT ?answerLabel WHERE {{ '
+                           '  wd:{} wdt:{} ?answer . '
+                           '  SERVICE wikibase:label {{ '
+                           '    bd:serviceParam wikibase:language "en" . '
+                           '  }}'
+                           '}}',
+            'WHAT_X_DID_Y':  'SELECT ?answerLabel WHERE {{ '
                            '  wd:{} wdt:{} ?answer . '
                            '  SERVICE wikibase:label {{ '
                            '    bd:serviceParam wikibase:language "en" . '
