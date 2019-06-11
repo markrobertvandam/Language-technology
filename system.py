@@ -347,13 +347,14 @@ class QuestionParser:
         prop  = []
         for item in result:
             prop = result[-2].lemma_
-            if prop == 'born':
+            if prop == 'born' or prop == 'bear':
                 prop = ['birth', 'date']
             elif prop == 'died' or prop == 'die':
                 prop = ['death', 'date']
             elif prop == 'founded' or prop == 'started' or prop == 'found' or prop == 'begin' or prop == 'start':
                 prop = ['the founding']
-            
+        print(entity)
+        print(prop)
         return entity, prop, None
 
     @staticmethod
@@ -370,10 +371,12 @@ class QuestionParser:
         prop = []
         for item in result:
             prop = result[-2].lemma_
-            if prop == 'born':
+            if prop == 'born' or prop == 'bear':
                 prop = ['birth', 'place']
             if prop == 'died' or prop == 'die':
                 prop = ['death', 'place']
+        print(prop)
+        print(entity)
 
         return entity, prop, None
 
