@@ -297,8 +297,14 @@ class QuestionParser:
                 break
             else:
                 i += 1
-        ent_token = next(w for w in result if w.dep_ in ['nsubj', 'attr'] and w.pos_ in ['NOUN', 'PROPN', 'ADJ'])
-        entity = [w.text for w in ent_token.subtree]
+        entity = [e.text for e in result.ents]
+        try:
+            entity = entity[0]
+        except IndexError:
+            entity = []
+            for w in result:
+                if w.pos_ == "PROPN":
+                    entity.append(w.text)
         print(prop)
         print(entity)
         return entity, prop, None
