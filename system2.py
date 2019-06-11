@@ -334,7 +334,16 @@ class QuestionParser:
 
     @staticmethod
     def when_did_was(result):
-        entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
+        entity = [e.text for e in result.ents]
+        try:
+            entity = entity[0]
+            entity = entity.split()
+        except IndexError:
+            entity = []
+            for w in result:
+                if w.pos_ == "PROPN":
+                    entity.append(w.text)
+        prop  = []
         for item in result:
             if item.text == 'born':
                 prop = ['birth', 'date']
@@ -344,7 +353,16 @@ class QuestionParser:
 
     @staticmethod
     def where_did_was(result):
-        entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
+        entity = [e.text for e in result.ents]
+        try:
+            entity = entity[0]
+            entity = entity.split()
+        except IndexError:
+            entity = []
+            for w in result:
+                if w.pos_ == "PROPN":
+                    entity.append(w.text)
+        prop = []
         for item in result:
             if item.text == 'born':
                 prop = ['birth', 'place']
@@ -357,6 +375,7 @@ class QuestionParser:
         entity = [e.text for e in result.ents]
         try:
             entity = entity[0]
+            entity.split()
         except IndexError:
             entity = []
             for w in result:
@@ -365,11 +384,19 @@ class QuestionParser:
         for i, word in enumerate(result):
             if word.text.lower() == "which" or word.text.lower() == "what":
                 prop = result[i+1].text
-        return entity.split(), prop.split(), None
+        return entity, prop.split(), None
 
     @staticmethod
     def how_did(result):
-        entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
+        entity = [e.text for e in result.ents]
+        try:
+            entity = entity[0]
+            entity = entity.split()
+        except IndexError:
+            entity = []
+            for w in result:
+                if w.pos_ == "PROPN":
+                    entity.append(w.text)
         prop_one = result[-3].lemma_
         prop_two = result[-1].lemma_
         if prop_one == 'die':
@@ -592,19 +619,20 @@ def main():
                     # print(a)
                     try:
                         answers_current = qa_system(q)
+                        right_answer = 0
+                        if answers_current != None:
+                            for answer in answers_current:
+                                print(answer)
+                                if answer.strip() in answers:
+                                    right_answer += 1
+                            if right_answer / len(answers_current) >= 0.5:
+                                correct_answers += 1
+                        else:
+                            print('{}\t{}\t{}'.format(q, answers, answers_current), file=log_file)
                     except NoAnswerError:
                         print('{}\t{}'.format(q, 'No answers found'), file=log_file)
                     # print('Our answer(s):')
-                    right_answer = 0
-                    if answers_current != None:
-                        for answer in answers_current:
-                            # print(answer)
-                            if answer.strip() in answers:
-                                right_answer += 1
-                        if right_answer / len(answers_current) >= 0.5:
-                            correct_answers += 1
-                        else:
-                            print('{}\t{}\t{}'.format(q, answers, answers_current), file=log_file)
+                    
         print('Accuracy: ', correct_answers / num_questions)
     else:
         for question in sys.stdin:
