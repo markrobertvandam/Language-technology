@@ -24,13 +24,13 @@ class NoAnswerError(Exception):
 class QuestionParser:
     stop_words = {'a', 'by', 'of', 'the', '\'s', '"', '\''}
     trans_dict = {
-        'direct':    'director',
-        'write':     'author',
-        'compose':   'composer',
-        'invent':    'inventor',
-        'bear':      'birth',
-        'die':       'death',
-        'born':      'birth',
+        'direct':  'director',
+        'write':   'author',
+        'compose': 'composer',
+        'invent':  'inventor',
+        'bear':    'birth',
+        'die':     'death',
+        'born':    'birth',
     }
 
     def __init__(self):
@@ -41,7 +41,7 @@ class QuestionParser:
     def __call__(self, question):
         question = question.strip()
         if question[-1] != "?":
-            question+="?"
+            question += "?"
         result = self.nlp(question)
         try:
             match_id, start, end = self.matcher(result)[0]
@@ -54,6 +54,7 @@ class QuestionParser:
         # translate de property en verwijder stopwords uit de entity
         prop = self.translate_query(prop) if prop is not None else None
         ent = ' '.join(w for w in ent if w not in self.stop_words) if ent is not None else None
+        extra = ' '.join(extra) if extra is not None else None
         return result.vocab.strings[match_id], ent, prop, extra
 
     def init_matcher(self):
@@ -64,7 +65,7 @@ class QuestionParser:
                         {'DEP': {'IN': ['attr', 'advmod', 'nsubj']}, 'LOWER': {'IN': ['who', 'what', 'when']}},
                         {'LOWER': {'IN': ['is', 'are', 'was', 'were']}},
                         {'DEP': 'det', 'OP': '?'},
-                        {'DEP': {'IN': ['amod', 'compound', 'attr','nsubj']}, 'OP': '*'},
+                        {'DEP': {'IN': ['amod', 'compound', 'attr', 'nsubj']}, 'OP': '*'},
                         {'LOWER': 'of'}
                     ])
         matcher.add('POSSESSIVE', None,
@@ -81,7 +82,7 @@ class QuestionParser:
                         {'LEMMA': 'be'},
                         {'DEP': 'det', 'OP': '?'},
                         {'DEP': 'compound', 'OP': '*'},
-                        {'DEP': {'IN': ['attr', 'nsubj']}},{'DEP': 'punct'}
+                        {'DEP': {'IN': ['attr', 'nsubj']}}, {'DEP': 'punct'}
                     ])
         matcher.add('WHAT_IS', None,
                     [
@@ -89,7 +90,7 @@ class QuestionParser:
                         {'LEMMA': 'be'},
                         {'DEP': 'det', 'OP': '?'},
                         {'DEP': 'compound', 'OP': '*'},
-                        {'DEP': {'IN': ['attr', 'nsubj']}},{'DEP': 'punct'}
+                        {'DEP': {'IN': ['attr', 'nsubj']}}, {'DEP': 'punct'}
                     ])
         matcher.add('WHAT_MEANS', None,
                     [
@@ -124,12 +125,12 @@ class QuestionParser:
         matcher.add('WHEN_DID_WAS', None,
                     [
                         {'LOWER': {'IN': ['when']}},
-                        {'LOWER': {'IN': ['did','was']}},
+                        {'LOWER': {'IN': ['did', 'was']}},
                     ])
         matcher.add('WHERE_DID_WAS', None,
                     [
                         {'LOWER': {'IN': ['where']}},
-                        {'LOWER': {'IN': ['did','was']}},
+                        {'LOWER': {'IN': ['did', 'was']}},
                     ])
 
         matcher.add('HOW_DID', None,
@@ -156,14 +157,14 @@ class QuestionParser:
             {'POS': 'NOUN', 'DEP': 'compound', 'OP': '*'},
             {'POS': 'NOUN', 'DEP': {'IN': ['dobj', 'nsubj', 'pcomp']}},
             {'POS': 'VERB'},
-            ])
-    
-        matcher.add('DID_X',None,[
-            {'LOWER': {'IN': ['did','does']}},
+        ])
+
+        matcher.add('DID_X', None, [
+            {'LOWER': {'IN': ['did', 'does']}},
             {'DEP': 'det', 'OP': '?'},
-            {'DEP': {'IN': ['amod', 'compound', 'attr','nsubj']}, 'OP': '*'},
-            {'LOWER': {'IN': ['play','compose','write','perform','practice','sing','influence']}}
-            ])
+            {'DEP': {'IN': ['amod', 'compound', 'attr', 'nsubj']}, 'OP': '*'},
+            {'LOWER': {'IN': ['play', 'compose', 'write', 'perform', 'practice', 'sing', 'influence']}}
+        ])
         return matcher
 
     # translator functie om de uiteindelijke entity en property teksten te filteren/rewriten
@@ -230,9 +231,9 @@ class QuestionParser:
         try:
             poss = [w for w in result if w.dep_ == 'case']
             entity = [w.text for w in result if w.pos_ == 'PROPN']
-            prop = [w.lemma_ for w in result[list(result).index(poss[0])+1:-3]]
-            if prop == []:
-                prop = [w.lemma_ for w in result[list(result).index(poss[0])+1:-1]]
+            prop = [w.lemma_ for w in result[list(result).index(poss[0]) + 1:-3]]
+            if not prop:
+                prop = [w.lemma_ for w in result[list(result).index(poss[0]) + 1:-1]]
             # entity = [w.text for w in prop_ent.subtree]
             return entity, prop, None
         except StopIteration:
@@ -272,7 +273,6 @@ class QuestionParser:
 
     @staticmethod
     def when_where(result):
-        # print("when_where")
         try:
             entity = [w.text for w in next(w for w in result[1:] if w.dep_ in ['nsubj', 'nsubjpass', 'advmod']).subtree]
             prop_one = result[0].lemma_
@@ -284,7 +284,6 @@ class QuestionParser:
 
     @staticmethod
     def who_did_x(result):
-        # print("who_did_x")
         try:
             prop = ['who', next(w for w in result if w.dep_ == 'ROOT').lemma_]
             entity = []
@@ -294,7 +293,6 @@ class QuestionParser:
 
     @staticmethod
     def what_x_did_y(result):
-        # print("what_did_x")
         i = 0
         for item in result:
             if item.pos_ == "NOUN" and (item.dep_ == "nsubj" or item.dep_ == "dobj" or item.dep_ == "pcomp"):
@@ -308,12 +306,11 @@ class QuestionParser:
         except IndexError:
             for j, it in enumerate(result):
                 if it.pos_ == "VERB":
-                    entity = result[j+1].text
+                    entity = result[j + 1].text
                     break
         return entity.split(), prop.split(), None
 
     @staticmethod
-
     def how_many_x(result):
         i = 0
         for item in result:
@@ -344,7 +341,7 @@ class QuestionParser:
             for w in result:
                 if w.pos_ == "PROPN":
                     entity.append(w.text)
-        prop  = []
+        prop = []
         for item in result:
             prop = result[-2].lemma_
             if prop == 'born' or prop == 'bear':
@@ -353,8 +350,6 @@ class QuestionParser:
                 prop = ['death', 'date']
             elif prop == 'founded' or prop == 'started' or prop == 'found' or prop == 'begin' or prop == 'start':
                 prop = ['the founding']
-        print(entity)
-        print(prop)
         return entity, prop, None
 
     @staticmethod
@@ -369,15 +364,12 @@ class QuestionParser:
                 if w.pos_ == "PROPN":
                     entity.append(w.text)
         prop = []
-        for item in result:
+        for _ in result:
             prop = result[-2].lemma_
             if prop == 'born' or prop == 'bear':
                 prop = ['birth', 'place']
             if prop == 'died' or prop == 'die':
                 prop = ['death', 'place']
-        print(prop)
-        print(entity)
-
         return entity, prop, None
 
     @staticmethod
@@ -393,7 +385,7 @@ class QuestionParser:
                     entity.append(w.text)
         for i, word in enumerate(result):
             if word.text.lower() == "which" or word.text.lower() == "what":
-                prop = result[i+1].text
+                prop = result[i + 1].text
         return entity, prop.split(), None
 
     @staticmethod
@@ -408,7 +400,6 @@ class QuestionParser:
                 if w.pos_ == "PROPN":
                     entity.append(w.text)
         prop_one = result[-2].lemma_
-        prop_two = result[-1].lemma_
         if prop_one == 'die':
             prop_one = 'cause of death'
         prop = [prop_one]
@@ -416,22 +407,19 @@ class QuestionParser:
 
     @staticmethod
     def did_x(result):
-        print("did_x")
         try:
             verb = [next(w for w in result if w.dep_ == 'ROOT')]
             prop = [w.lemma_ for w in verb]
             if prop[0] != "play":
                 answer = [w.lemma_ for w in result[1:list(result).index(verb[0])]]
-                entity = [w.lemma_ for w in result[list(result).index(verb[0])+1:-1]]
+                entity = [w.lemma_ for w in result[list(result).index(verb[0]) + 1:-1]]
             else:
                 entity = [w.lemma_ for w in result[1:list(result).index(verb[0])]]
-                answer = [w.lemma_ for w in result[list(result).index(verb[0])+1:-1]]
-            print(prop)
-            print(entity)
-            print(answer)
-            return entity, prop, None
+                answer = [w.lemma_ for w in result[list(result).index(verb[0]) + 1:-1]]
+            return entity, prop, answer
         except StopIteration:
             return None, None, None
+
 
 class QuestionSolver:
     def __init__(self):
@@ -441,92 +429,92 @@ class QuestionSolver:
 
         self.query_dict = {
 
-            'X_OF_Y':      'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'POSSESSIVE':  'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'WHO_IS': 'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:P1477 ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'WHAT_IS': 'SELECT ?entityDescription WHERE {{ '
-                           '  BIND(wd:{} as ?entity) . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'WHAT_MEANS':  'SELECT ?entityLabel ?entityDescription WHERE {{ '
-                           '  BIND(wd:{} as ?entity) . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'WHEN_WHERE':  'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'WHO_DID_X':  'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
+            'X_OF_Y':        'SELECT ?answerLabel WHERE {{ '
+                             '  wd:{} wdt:{} ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'POSSESSIVE':    'SELECT ?answerLabel WHERE {{ '
+                             '  wd:{} wdt:{} ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'WHO_IS':        'SELECT ?answerLabel WHERE {{ '
+                             '  wd:{} wdt:P1477 ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'WHAT_IS':       'SELECT ?entityDescription WHERE {{ '
+                             '  BIND(wd:{} as ?entity) . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'WHAT_MEANS':    'SELECT ?entityLabel ?entityDescription WHERE {{ '
+                             '  BIND(wd:{} as ?entity) . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'WHEN_WHERE':    'SELECT ?answerLabel WHERE {{ '
+                             '  wd:{} wdt:{} ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'WHO_DID_X':     'SELECT ?answerLabel WHERE {{ '
+                             '  wd:{} wdt:{} ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
             'WHAT_X_DID_Y':  'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
+                             '  wd:{} wdt:{} ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
             'WHEN_DID_WAS':  'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'WHERE_DID_WAS':  'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'HOW_DID':  'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'HOW_MANY_X':  'SELECT (count(?answer) as ?answerLabel) WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'FROM_WHICH_X':'SELECT ?answerLabel WHERE {{ '
-                           '  wd:{} wdt:{} ?answer . '
-                           '  SERVICE wikibase:label {{ '
-                           '    bd:serviceParam wikibase:language "en" . '
-                           '  }}'
-                           '}}',
-            'DID_X':       'ASK {{wd:{} wdt:{} wd:{} .}}',
+                             '  wd:{} wdt:{} ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'WHERE_DID_WAS': 'SELECT ?answerLabel WHERE {{ '
+                             '  wd:{} wdt:{} ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'HOW_DID':       'SELECT ?answerLabel WHERE {{ '
+                             '  wd:{} wdt:{} ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'HOW_MANY_X':    'SELECT (count(?answer) as ?answerLabel) WHERE {{ '
+                             '  wd:{} wdt:{} ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'FROM_WHICH_X':  'SELECT ?answerLabel WHERE {{ '
+                             '  wd:{} wdt:{} ?answer . '
+                             '  SERVICE wikibase:label {{ '
+                             '    bd:serviceParam wikibase:language "en" . '
+                             '  }}'
+                             '}}',
+            'DID_X':         'ASK {{ wd:{} wdt:{} wd:{} . }}',
         }
 
     def __call__(self, question):
         try:
             # parse de vraag die gesteld werd, maar haal eerst het vraagteken en evt. witruimte weg
             q_type, ent, prop, extra = self.parser(question)
-            if ent == None and prop == None:
+            if ent is None and prop is None:
                 raise NoAnswerError
             else:
                 return self.query_answer(q_type, ent, prop, extra)
@@ -579,6 +567,7 @@ class QuestionSolver:
         # dirty hack om een element in de lijst te hebben als de property unset is (zoals bij "What is X?" vragen)
         wikidata_props = self.query_wikidata_api(prop, True) if prop is not None else ['']
         wikidata_entities = self.query_wikidata_api(ent) if ent is not None else ['']
+        extra = self.query_wikidata_api(extra)[0] if extra is not None else ''
         # niks gevonden voor de entity of de property
         if wikidata_props is None:
             raise NoAnswerError('Could not find the property you asked for')
@@ -623,46 +612,21 @@ def main():
     print('Loading up QA System...')
     qa_system = QuestionSolver()
     print('Ready to go!\n')
-    # answer questions from standard input
-    if len(sys.argv) == 2:
-        correct_answers = 0
-        num_questions = 0
-        with open(sys.argv[1], 'r') as questions_file:
-            with open('syslog.txt', 'w') as log_file:
-                with open('answer_file', 'w') as answer_file:
-                    for question in questions_file:
-
-                        # skip gecommentte vragen
-                        if question[0] == "#":
-                            continue
-                        num_questions += 1
-                        q_id, q = question.strip().split('\t')
-                        answer_file.write(q_id)
-                        try:
-                            answers_current = qa_system(q)
-                            #right_answer = 0
-                            if answers_current != None:
-                                for answer in answers_current:
-                                    answer_file.write("\t"+answer)
-                                    #if answer.strip() in answers:
-                                        #right_answer += 1
-                                #if right_answer / len(answers_current) >= 0.5:
-                                    #correct_answers += 1
-                            else:
-                                answer_file.write("\tAnswer not found")
-                        except NoAnswerError:
-                            answer_file.write("\tAnswer not found")
-                        answer_file.write("\n")
-                    
-        #print('Accuracy: ', correct_answers / num_questions)
-    else:
+    # beantwoord vragen vanuit standard input met answer_file.txt als output
+    with open('answer_file.txt', 'w') as answer_file:
         for question in sys.stdin:
-            qa_system.print_question(question)
+            q_id, q = question.strip().split('\t')
+            answer_file.write(q_id)
             try:
-                answers_current = qa_system(question)
-                qa_system.print_answers(answers_current)
-            except NoAnswerError as err:
-                print(err)
+                answers_current = qa_system(q)
+                if answers_current is not None:
+                    for answer in answers_current:
+                        answer_file.write("\t" + answer)
+                else:
+                    answer_file.write("\tAnswer not found")
+            except NoAnswerError:
+                answer_file.write("\tAnswer not found")
+            answer_file.write("\n")
 
 
 if __name__ == '__main__':
