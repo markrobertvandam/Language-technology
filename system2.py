@@ -324,12 +324,13 @@ class QuestionParser:
         entity = [e.text for e in result.ents]
         try:
             entity = entity[0]
+            entity = entity.split()
         except IndexError:
             entity = []
             for w in result:
                 if w.pos_ == "PROPN":
                     entity.append(w.text)
-        return entity.split(), prop.split(), None
+        return entity, prop, None
 
     @staticmethod
     def when_did_was(result):
