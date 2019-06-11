@@ -416,9 +416,13 @@ class QuestionParser:
         print("did_x")
         try:
             verb = [next(w for w in result if w.dep_ == 'ROOT')]
-            entity = [w.lemma_ for w in result[1:list(result).index(verb[0])]]
             prop = [w.lemma_ for w in verb]
-            answer = [w.lemma_ for w in result[list(result).index(verb[0])+1:-1]]
+            if prop[0] != "play":
+                answer = [w.lemma_ for w in result[1:list(result).index(verb[0])]]
+                entity = [w.lemma_ for w in result[list(result).index(verb[0])+1:-1]]
+            else:
+                entity = [w.lemma_ for w in result[1:list(result).index(verb[0])]]
+                answer = [w.lemma_ for w in result[list(result).index(verb[0])+1:-1]]
             print(prop)
             print(entity)
             print(answer)
